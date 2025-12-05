@@ -5,6 +5,8 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
+import type { Session } from "next-auth"
+import { PermissionsProvider } from "@/providers/permissions-provider";
 
 /**
  * Step 13: React Query Configuration
@@ -33,18 +35,20 @@ function makeQueryClient() {
   });
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export default function Providers({ session, children }: { session: Session | null, children: React.ReactNode }) {
   // Create a stable query client instance per component mount
   // This ensures SSR compatibility
   const [queryClient] = useState(() => makeQueryClient());
 
   return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="light" attribute="class">
-          <SidebarProvider>{children}</SidebarProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+    <SessionProvider session={session}>
+      <PermissionsProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider defaultTheme="light" attribute="class">
+            <SidebarProvider>{children}</SidebarProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </PermissionsProvider>
     </SessionProvider>
   );
 }

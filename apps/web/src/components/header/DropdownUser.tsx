@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { User, UserRound } from 'lucide-react';
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -22,7 +23,7 @@ const DropdownUser = () => {
         </span>
 
         <span className="h-12 w-12 rounded-full">
-          <Image
+          {/* <Image
             width={112}
             height={112}
             src={'/images/user/user-01.png'}
@@ -31,7 +32,8 @@ const DropdownUser = () => {
               height: 'auto',
             }}
             alt="User"
-          />
+          /> */}
+          <UserRound className="hidden h-7 w-7 text-gray-500 dark:text-gray-400 sm:block" />
         </span>
 
         <svg

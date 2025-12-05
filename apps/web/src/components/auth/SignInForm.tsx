@@ -10,6 +10,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { trackEvent } from '@/lib/analytics/posthog'
+import { useSession, signIn, getSession } from 'next-auth/react'
+import { useRouter } from "next/navigation"
+import { notify } from '@/lib/toast'
 
 interface SignInFormProps {
   action?: (formData: FormData) => void
@@ -21,6 +24,7 @@ export function SignInForm({ action }: SignInFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const router = useRouter();
 
   const searchParams = useSearchParams()
   const error = searchParams?.get('error')
@@ -29,58 +33,41 @@ export function SignInForm({ action }: SignInFormProps) {
     trackEvent('signin_view')
   }, [])
 
-  // Handle form submission to API route
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    try {
-      const formData = new FormData()
-      formData.set('email', email)
-      formData.set('password', password)
-      if (rememberMe) {
-        formData.set('remember_me', 'on')
-      }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  setIsLoading(true)
 
-      trackEvent('signin_submit', { has_email: !!email, remember_me: rememberMe })
+  try {
+    trackEvent('signin_submit', { has_email: !!email, remember_me: rememberMe })
 
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        body: JSON.stringify({
-          email,
-          password
-        }),
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Include cookies
-      })
+    const response = await signIn("credentials", {
+      email,
+      password,
+      redirect: false
+    })
 
-      const data = await response.json()
-
-      if (response.ok) {
-        trackEvent('signin_success')
-        // Redirect based on role
-        const role = data.user?.role || 'user'
-        if (role === 'admin' || role === 'org_admin' || role === 'reviewer' || role === 'finance' || role === 'auditor') {
-          window.location.href = '/admin'
-        } else if (role === 'supplier') {
-          window.location.href = '/supplier/dashboard'
-        } else {
-          window.location.href = '/portal/dashboard'
-        }
-      } else {
-        trackEvent('signin_failure', { error: data.error })
-        // Redirect with error
-        window.location.href = '/signin?error=' + encodeURIComponent(data.error || 'Authentication failed')
-      }
-    } catch (err) {
-      trackEvent('signin_failure', { error: err instanceof Error ? err.message : 'Unknown error' })
-      window.location.href = '/signin?error=' + encodeURIComponent('Network error')
-    } finally {
-      setIsLoading(false)
+    if (response?.error) {
+      router.push(`/signin?error=${encodeURIComponent(response.error || "Error")}`)
+      return
     }
-  }
 
+    const session = await getSession()
+
+    if (!session?.user?.role) {
+      router.push(`/signin?error=${encodeURIComponent("Invalid session")}`)
+      return
+    }
+
+    notify.success("Signed in successfully")
+    router.push(`/${session.user.role}`)
+  } catch (err) {
+    trackEvent('signin_failure', { error: err instanceof Error ? err.message : 'Unknown error' })
+    router.push(`/signin?error=${encodeURIComponent('Network error')}`)
+    notify.error("Error while signing in")
+  } finally {
+    setIsLoading(false);
+  }
+}
   const handleSSO = async (provider: 'google' | 'microsoft' | 'github') => {
     trackEvent('sso_click', { provider })
     // SSO integration placeholder

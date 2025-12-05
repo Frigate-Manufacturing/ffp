@@ -2,7 +2,7 @@
 
 import DefaultLayout from '@/components/Layouts/DefaultLayout';
 import { useState, useEffect, useMemo } from 'react';
-import { api } from '@/lib/api';
+import { apiClient } from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { formatDate } from '@/lib/format';
 import {
