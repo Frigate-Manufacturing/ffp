@@ -137,15 +137,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/portal/:path*',
-    '/checkout/:path*',
-    '/orders/confirmation/:path*',
-    '/widget/:path*',
-    '/embed/:path*',
-    '/support',
-    '/help-center',
-    '/faq/:path*',
-    '/((?!api|_next|favicon.ico|.*\\.).*)',
   ],
 };
