@@ -5,9 +5,9 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { MetaNames } from 'libs/constants';
+import { MetaNames } from '../../libs/constants';
 import { PermissionCheckService } from './permisson-check.service';
-import { checkIfExist } from 'libs/helpers';
+import { checkIfExist } from '../../libs/helpers';
 
 @Injectable()
 export class PermissionGuard implements CanActivate {

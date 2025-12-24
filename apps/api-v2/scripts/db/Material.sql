@@ -10,18 +10,27 @@ create type unit_type as enum (
 );
 create type currency_type as enum ('USD', 'INR', 'EUR');
 create type material_status as enum ('active', 'inactive');
+-- --
+-- Material
+-- --
 create table material (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name text NOT NULL UNIQUE
 );
 CREATE INDEX idx_material_name ON material(name);
+-- --
+-- Material Caregories
+-- --
 create table material_categories (
     id uuid primary key default gen_random_uuid(),
     name varchar(255),
     slug text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-) create table general_materials (
+) -- --
+-- General Materials
+-- --
+create table general_materials (
     id uuid primary key default gen_random_uuid(),
     name text not null,
     code text not null,

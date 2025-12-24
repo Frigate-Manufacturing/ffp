@@ -10,6 +10,20 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'plugin:prettier/recommended',
   ],
+  overrides: [
+    {
+      files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+      rules: {
+        'no-undef': 'off',
+      },
+    },
+    {
+      files: ['**/*.spec.ts', '**/*.e2e-spec.ts', '**/*.test.ts'],
+      env: {
+        jest: true,
+      },
+    },
+  ],
   root: true,
   env: {
     node: true,
@@ -21,5 +35,6 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
+    'no-undef': 'off',
   },
 };

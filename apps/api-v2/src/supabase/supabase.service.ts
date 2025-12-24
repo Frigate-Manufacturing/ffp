@@ -53,6 +53,7 @@ export class SupabaseService {
   }
 
   async uploadFile(
+    // eslint-disable-next-line no-undef
     file: Express.Multer.File,
     bucket: string = 'uploads',
     path?: string,
@@ -61,7 +62,7 @@ export class SupabaseService {
       path = `FFP-${Date.now()}-${file.originalname}`;
     }
 
-    const { data, error } = await this.supabase.storage
+    const { error } = await this.supabase.storage
       .from(bucket)
       .upload(path, file.buffer, {
         contentType: file.mimetype,

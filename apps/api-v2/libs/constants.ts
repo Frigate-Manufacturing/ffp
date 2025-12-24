@@ -71,6 +71,7 @@ export enum SQLFunctions {
   createInitialRFQ = 'create_initial_rfq',
   abandonRFQPart = 'abandon_rfq_part',
   abandonRFQParts = 'abandon_rfq_parts',
+  getUserRFQsWithPartsCount = 'get_user_rfqs_with_parts_count',
 }
 
 /**

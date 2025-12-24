@@ -2,11 +2,12 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
+  const logger = new Logger('Bootstrap');
 
   app.use(helmet());
   app.enableCors({
@@ -25,6 +26,6 @@ async function bootstrap() {
   const port = configService.get<number>('PORT', 4001);
   await app.listen(port);
 
-  console.log(`🚀 API-v2 running on http://localhost:${port}`);
+  logger.log(`🚀 API-v2 running on http://localhost:${port}`);
 }
 bootstrap();

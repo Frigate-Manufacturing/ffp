@@ -5,30 +5,24 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Package,
-  DollarSign,
   ArrowRight,
-  Zap,
-  TrendingUp,
   Loader2,
   Upload,
-  Clock,
-  CheckCircle,
   CheckSquare,
   Square,
   Trash2,
   ChevronRight,
   User,
   LogOut,
-  Truck,
   Package2,
   LayoutDashboard,
-  ChevronDown,
   Archive,
   ScrollText,
   Save,
   Plus,
+  Truck,
 } from "lucide-react";
-import { GeometryData, analyzeCADFile } from "../../../lib/cad-analysis";
+import { analyzeCADFile } from "../../../lib/cad-analysis";
 import {
   calculatePricing,
   getMaterial,
@@ -36,9 +30,7 @@ import {
   PROCESSES,
   MATERIALS,
   FINISHES,
-  PricingBreakdown,
 } from "../../../lib/pricing-engine";
-import { getItem } from "@/lib/item-storage";
 import { PartCardItem } from "../components/part-card-item";
 import { useDropzone } from "react-dropzone";
 import {
@@ -56,19 +48,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { signOut, useSession } from "next-auth/react";
 import UploadFileModal from "../components/upload-file-modal";
 import { useFileUpload } from "@/lib/hooks/use-file-upload";
 import { apiClient } from "@/lib/api";
 
-import { PartConfig, File2D } from "@/types/part-config";
+import { PartConfig } from "@/types/part-config";
 import Logo from "@/components/ui/logo";
 import ArchiveModal from "../components/archive-modal";
 
@@ -491,7 +476,7 @@ export default function QuoteConfigPage() {
             let currentRfq = response.data.rfq;
 
             // Map and Calculate
-            let partsToSync: {
+            const partsToSync: {
               id: string;
               final_price: number;
               lead_time: number;
@@ -749,7 +734,9 @@ export default function QuoteConfigPage() {
 
   const baseLeadTime = Math.max(...parts.map((p) => calculateLeadTime(p)));
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (
+    message: string = "Draft saved successfully",
+  ) => {
     if (unsavedChanges.size === 0) {
       notify.info("No changes to save");
       return;
@@ -766,6 +753,7 @@ export default function QuoteConfigPage() {
             lead_time_type: part.leadTimeType,
             final_price: part.final_price,
             lead_time: part.leadTime,
+            rfq_final_price: standardPrice.toFixed(2),
           };
 
           await apiClient.patch(`/rfq/${rfq.id}/parts/${part.id}`, payload);
@@ -773,7 +761,7 @@ export default function QuoteConfigPage() {
       );
 
       setUnsavedChanges(new Set());
-      notify.success("Draft saved successfully");
+      notify.success(message);
     } catch (error) {
       console.error("Error saving draft:", error);
       notify.error("Failed to save draft");
@@ -787,13 +775,20 @@ export default function QuoteConfigPage() {
       setSaving(true);
       // Ensure all changes are saved before checkout logic if needed
       if (unsavedChanges.size > 0) {
-        await handleSaveDraft();
+        await handleSaveDraft("Quote changes saved successfully");
+      }
+
+      if (standardPrice < 150) {
+        notify.error(
+          "Please revise the quote to a minimum value of $150 to proceed.",
+        );
+        return;
       }
 
       router.push(`/checkout/${quoteId}`);
     } catch (error) {
       console.error("Error saving configuration:", error);
-      alert("Failed to save configuration. Please try again.");
+      notify.error("Failed to save configuration. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -883,7 +878,9 @@ export default function QuoteConfigPage() {
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
               <Button
-                onClick={handleSaveDraft}
+                onClick={() =>
+                  handleSaveDraft("Quote changes saved successfully")
+                }
                 disabled={saving || unsavedChanges.size === 0}
                 className="text-blue-600 bg-blue-50 hover:text-blue-700 hover:bg-blue-50 font-medium shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98] rounded-lg"
               >

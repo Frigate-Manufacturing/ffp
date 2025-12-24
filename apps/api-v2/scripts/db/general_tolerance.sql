@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS general_tolerances (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE index IF NOT EXISTS idx_general_tolerances_name ON general_tolerances(name);
+-- --
+-- General Tolerances
+-- --
 INSERT INTO general_tolerances (name, range_value, percentage, description)
 VALUES (
         "Standard",

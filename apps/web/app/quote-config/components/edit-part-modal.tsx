@@ -20,7 +20,7 @@ import {
 } from "@/types/part-config";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDropzone } from "react-dropzone";
-import { Upload, BarChart4 } from "lucide-react";
+import { Upload } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { formatCurrency } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -145,7 +145,7 @@ export function EditPartModal({
       const keys = Object.keys(localPart) as (keyof PartConfig)[];
       keys.forEach((key) => {
         if (localPart[key] !== part[key]) {
-          // @ts-ignore
+          // @ts-expect-error dynamic key assignment not safely typed
           updates[key] = localPart[key];
         }
       });
@@ -173,7 +173,7 @@ export function EditPartModal({
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
       "model/stl": [".stl"],

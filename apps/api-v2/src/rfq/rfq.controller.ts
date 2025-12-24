@@ -11,26 +11,47 @@ import {
   Delete,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { RoleNames, SQLFunctions, Tables } from 'libs/constants';
-import { Roles } from 'src/auth/roles.decorator';
-import { SupabaseService } from 'src/supabase/supabase.service';
+import { RoleNames, SQLFunctions, Tables } from '../../libs/constants';
+import { Roles } from '../auth/roles.decorator';
+import { SupabaseService } from '../supabase/supabase.service';
 import {
   Add2DDrawingsDto,
-  Drawing2DLookupDto,
   InitialPartDto,
   InitialRFQDto,
   RemovePartsDto,
   SyncPricingDto,
   UpdatePartDto,
 } from './rfq.dto';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { CurrentUser } from 'src/auth/user.decorator';
-import { CurrentUserDto } from 'src/auth/auth.dto';
+import { AuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../auth/user.decorator';
+import { CurrentUserDto } from '../auth/auth.dto';
 
 @Controller('rfq')
 @UseGuards(AuthGuard)
 export class RfqController {
   constructor(private readonly supbaseService: SupabaseService) {}
+
+  @Get('')
+  @Roles(RoleNames.Admin, RoleNames.Customer)
+  async getUserRfqs(@CurrentUser() user: CurrentUserDto) {
+    const client = this.supbaseService.getClient();
+
+    const { data, error } = await client.rpc(
+      SQLFunctions.getUserRFQsWithPartsCount,
+      {
+        p_user_id: user.id,
+      },
+    );
+
+    if (error) {
+      throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+    }
+
+    return {
+      success: true,
+      rfqs: data,
+    };
+  }
 
   @Post('')
   @Roles(RoleNames.Customer)
@@ -43,8 +64,6 @@ export class RfqController {
       p_user_id: body.user_id,
       p_parts: body.parts,
     });
-
-    console.log(data[0]);
 
     if (error) {
       throw error;
@@ -94,8 +113,6 @@ export class RfqController {
     @Body() body: { drawings: Add2DDrawingsDto[] },
   ) {
     const client = this.supbaseService.getClient();
-
-    console.log(body);
 
     const { data, error } = await client
       .from(Tables.RFQPartDrawing2DTable)
@@ -207,8 +224,6 @@ export class RfqController {
     @Body() body: UpdatePartDto,
   ) {
     const client = this.supbaseService.getClient();
-
-    console.log(body, '<----');
 
     const { data, error } = await client
       .from(Tables.RFQPartsTable)

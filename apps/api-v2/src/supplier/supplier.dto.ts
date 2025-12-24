@@ -1,4 +1,4 @@
-import { CurrencyType, StockMaterial, UnitType } from 'libs/constants';
+import { CurrencyType, StockMaterial, UnitType } from '../../libs/constants';
 
 export type CreateWarehouseDto = {
   name: string;
@@ -30,7 +30,6 @@ export type RemoveStockDto = {
   quantity: number;
 };
 
-
 export type CreateSupplierMaterialDto = {
   material: string;
   warehouse: string;
@@ -40,4 +39,4 @@ export type CreateSupplierMaterialDto = {
   supplier_price: number;
   status: 'active' | 'inactive';
   currency: CurrencyType;
-}
+};

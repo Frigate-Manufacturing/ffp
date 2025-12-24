@@ -8,7 +8,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { RoleNames, Tables } from 'libs/constants';
+import { RoleNames, Tables } from '../../libs/constants';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { SupabaseService } from 'src/supabase/supabase.service';

@@ -4,7 +4,7 @@ import {
   MaterializedViewNames,
   PERMISSION_ALIASES,
   PermissionsNames,
-} from 'libs/constants';
+} from '../../libs/constants';
 
 @Injectable()
 export class PermissionCheckService {

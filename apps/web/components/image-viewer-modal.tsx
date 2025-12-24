@@ -8,9 +8,6 @@ import {
   RotateCw,
   RotateCcw,
   Download,
-  Maximize2,
-  RefreshCw,
-  Move,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

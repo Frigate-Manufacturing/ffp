@@ -165,7 +165,7 @@ export function PartCardItem({
     [index, updatePart, upload, part.files2d],
   );
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
       "model/stl": [".stl"],
@@ -242,7 +242,7 @@ export function PartCardItem({
         {/* LEFT SIDEBAR: Visuals, Pricing, Key Metrics */}
         <div className="w-full md:w-[340px] bg-slate-50/80 border-b md:border-b-0 md:border-r border-slate-100 p-6 flex flex-col gap-6 flex-shrink-0">
           {/* 3D Thumbnail */}
-          <div className="aspect-square w-full max-h-[200px] md:max-w-[200px] md:max-h-[200px] lg:max-h-[300px] bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm relative hover:border-blue-400 transition-colors">
+          <div className="aspect-square w-full max-h-[200px] md:max-w-[300px] md:max-h-[200px] lg:max-h-[300px] bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm relative hover:border-blue-400 transition-colors">
             <CadViewer
               file={part.fileObject || part.filePath}
               className="h-full w-full"

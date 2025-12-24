@@ -14,7 +14,7 @@ import { CurrentUser } from './user.decorator';
 
 import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { Tables } from 'libs/constants';
+import { Tables } from '../../libs/constants';
 import { AuthDto, LogoutDto, RefreshTokenDto } from './auth.dto';
 
 @Controller('auth')
@@ -48,8 +48,6 @@ export class AuthController {
         .select('*')
         .eq('email', email)
         .single();
-
-      console.log(user);
 
       if (error || !user) {
         throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
@@ -121,11 +119,6 @@ export class AuthController {
     try {
       const { refreshToken, userId } = body;
 
-      console.log('Refresh token request:', {
-        userId,
-        hasRefreshToken: !!refreshToken,
-      });
-
       if (!refreshToken || !userId) {
         throw new HttpException(
           'Refresh token and user ID are required',
@@ -143,14 +136,9 @@ export class AuthController {
         .single();
 
       if (userError || !user) {
-        console.log('User not found during refresh:', {
-          userId,
-          error: userError,
-        });
         throw new HttpException('User not found', HttpStatus.UNAUTHORIZED);
       }
 
-      // Get refresh token from refresh_tokens table
       const { data: tokenData, error: tokenError } = await client
         .from(Tables.RefreshTokensTable)
         .select('*')
@@ -158,25 +146,16 @@ export class AuthController {
         .single();
 
       if (tokenError || !tokenData) {
-        console.log('No refresh token in database for user:', userId);
         throw new HttpException(
           'No valid refresh token',
           HttpStatus.UNAUTHORIZED,
         );
       }
 
-      // Check if refresh token is expired
       const tokenExpiresAt = new Date(tokenData.expires_at);
       const now = new Date();
 
-      console.log('Token expiry check:', {
-        tokenExpiresAt: tokenExpiresAt.toISOString(),
-        now: now.toISOString(),
-        isExpired: tokenExpiresAt < now,
-      });
-
       if (tokenExpiresAt < now) {
-        console.log('Refresh token expired for user:', userId);
         // Delete expired token
         await client
           .from(Tables.RefreshTokensTable)
@@ -188,17 +167,9 @@ export class AuthController {
         );
       }
 
-      // Verify refresh token
       const isValidRefreshToken = await compare(refreshToken, tokenData.token);
 
-      console.log('Refresh token validation:', {
-        userId,
-        isValid: isValidRefreshToken,
-        tokenLength: refreshToken.length,
-      });
-
       if (!isValidRefreshToken) {
-        console.log('Invalid refresh token for user:', userId);
         throw new HttpException(
           'Invalid refresh token',
           HttpStatus.UNAUTHORIZED,
@@ -213,8 +184,6 @@ export class AuthController {
         organizationId: user.organization_id || null,
       });
 
-      // Don't rotate refresh token - just return the same one
-      // This prevents issues with NextAuth trying to use old tokens
       const result = {
         id: user.id,
         email: user.email,
@@ -222,13 +191,11 @@ export class AuthController {
         role: user.role || 'customer',
         organizationId: user.organization_id || null,
         accessToken: accessToken,
-        refreshToken: refreshToken, // Return the same refresh token
+        refreshToken: refreshToken,
       };
 
-      console.log('Token refresh successful');
       return result;
     } catch (error) {
-      console.error('Refresh token error:', error);
       if (error instanceof HttpException) {
         throw error;
       }

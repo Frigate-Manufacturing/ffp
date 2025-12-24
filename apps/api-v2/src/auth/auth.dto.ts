@@ -1,5 +1,5 @@
 import { IsEnum, IsString } from 'class-validator';
-import { RoleNames } from 'libs/constants';
+import { RoleNames } from '../../libs/constants';
 
 export class AuthDto {
   @IsString()

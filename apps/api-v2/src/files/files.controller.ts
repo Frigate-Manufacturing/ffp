@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { BucketNames } from 'libs/constants';
+import { BucketNames } from '../../libs/constants';
 
 @Controller('files')
 export class FilesController {
@@ -15,6 +15,7 @@ export class FilesController {
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
+  // eslint-disable-next-line no-undef
   async uploadFile(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('File is required');

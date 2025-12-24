@@ -14,11 +14,3 @@ END;
 $$;
 REVOKE ALL ON FUNCTION refresh_user_permission_codes_mv()
 FROM PUBLIC;
-CREATE table IF NOT EXISTS refresh_tokens (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid not null references users(id) on delete cascade,
-    token text not null,
-    created_at timestamp default now(),
-    expires_at timestamp,
-    updated_at timestamp default now()
-)

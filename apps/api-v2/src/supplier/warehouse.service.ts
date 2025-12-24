@@ -5,7 +5,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { StockMaterial, CurrencyType, Tables } from 'libs/constants';
+import { CurrencyType, Tables } from '../../libs/constants';
 
 @Injectable()
 export class WarehouseService {
@@ -23,7 +23,6 @@ export class WarehouseService {
         .eq('organization_id', organizationId)
         .single();
 
-      console.log('warehouse:', warehouse);
       if (warehouseError || !warehouse) {
         throw new NotFoundException('Warehouse not found');
       }
@@ -48,7 +47,9 @@ export class WarehouseService {
         .eq('warehouse_id', warehouseId);
 
       if (materialsError) {
-        throw new InternalServerErrorException('Failed to fetch materials' + JSON.stringify(materialsError));
+        throw new InternalServerErrorException(
+          'Failed to fetch materials' + JSON.stringify(materialsError),
+        );
       }
 
       // 3. Return a consolidated response

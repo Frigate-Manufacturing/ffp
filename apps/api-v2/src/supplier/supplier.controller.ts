@@ -15,7 +15,7 @@ import {
   RoleNames,
   SQLFunctions,
   Tables,
-} from 'libs/constants';
+} from '../../libs/constants';
 import { CurrentUserDto } from 'src/auth/auth.dto';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Roles } from 'src/auth/roles.decorator';
@@ -23,7 +23,6 @@ import { CurrentUser } from 'src/auth/user.decorator';
 import { RequirePermissions } from 'src/permissions/permissions.decorator';
 import { SupabaseService } from 'src/supabase/supabase.service';
 import {
-  AddStockDto,
   CreateSupplierMaterialDto,
   CreateWarehouseDto,
   RemoveStockDto,
@@ -31,7 +30,7 @@ import {
 } from './supplier.dto';
 import { WarehouseService } from './warehouse.service';
 import { PermissionGuard } from 'src/permissions/permission.guard';
-import { generateUUID } from 'libs/helpers';
+import { generateUUID } from '../../libs/helpers';
 
 @Controller('supplier')
 @UseGuards(AuthGuard, PermissionGuard)
@@ -300,7 +299,6 @@ export class SupplierController {
       .eq('organization_id', currentUser.organizationId);
 
     if (error) {
-      console.log(currentUser);
       console.error(error);
       return { warehouses: [] };
     }
@@ -353,7 +351,6 @@ export class SupplierController {
     @CurrentUser() currentUser: CurrentUserDto,
     @Param() params: { warehouseId: string },
   ) {
-    console.log(params.warehouseId, '<--warehouse');
     const warehouse = await this.warehouseService.getWarehouseById(
       params.warehouseId,
       currentUser.organizationId,

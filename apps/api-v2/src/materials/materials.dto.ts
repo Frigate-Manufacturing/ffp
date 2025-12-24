@@ -1,6 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { IsEnum, IsNumber, IsObject, IsString } from 'class-validator';
-import { StockMaterial } from 'libs/constants';
+import { StockMaterial } from '../../libs/constants';
 
 export class CreateMaterialDto {
   @IsString()
