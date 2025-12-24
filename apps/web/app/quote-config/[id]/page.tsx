@@ -99,20 +99,6 @@ const INSPECTION_OPTIONS = [
   { value: "material-cert", label: "Material Certification (+$25)" },
 ];
 
-function calcLeadTime(
-  leadTimeType: "economy" | "standard" | "expedited",
-  baseLeadTime: number,
-) {
-  return Math.round(
-    baseLeadTime *
-      (leadTimeType === "expedited"
-        ? 1
-        : leadTimeType === "standard"
-          ? 2.1
-          : 3),
-  );
-}
-
 type IRFQ = {
   id: string;
   rfq_code: string;
@@ -122,21 +108,37 @@ type IRFQ = {
 
 // --- Moved Helper Functions ---
 
-const calculateLeadTime = (part: PartConfig) => {
-  if (!part.pricing) return 7;
-  return Math.round(part.pricing.leadTimeDays);
+const calculateLeadTime = (
+  part: PartConfig,
+  tier?: "economy" | "standard" | "expedited",
+) => {
+  if (!part.geometry) return 7;
+
+  const material = getMaterial(part.material);
+  if (!material) return 7;
+
+  const process = PROCESSES["cnc-milling"];
+  const finish = getFinish(part.finish);
+
+  const pricing = calculatePricing({
+    geometry: part.geometry,
+    material,
+    process,
+    finish,
+    quantity: part.quantity,
+    tolerance: part.tolerance as "standard" | "precision" | "tight",
+    leadTimeType: tier || part.leadTimeType || "standard",
+  });
+
+  return Math.round(pricing.leadTimeDays);
 };
 
 const calculatePrice = (
   part: PartConfig,
   tier: "economy" | "standard" | "expedited" = "economy",
 ): number => {
-  // If no geometry data, return 0
-  if (!part.geometry) {
-    return 0;
-  }
+  if (!part.geometry) return 0;
 
-  // Calculate base pricing
   const material = getMaterial(part.material);
   if (!material) return 0;
 
@@ -150,17 +152,10 @@ const calculatePrice = (
     finish,
     quantity: part.quantity,
     tolerance: part.tolerance as "standard" | "precision" | "tight",
-    leadTimeType: "standard", // Always use standard as base
+    leadTimeType: tier,
   });
 
-  // Apply tier multipliers
-  const multipliers = {
-    economy: 1.0,
-    standard: 2.1,
-    expedited: 3.5,
-  };
-
-  return pricing.totalPrice * multipliers[tier];
+  return pricing.totalPrice;
 };
 
 export default function QuoteConfigPage() {
@@ -231,6 +226,7 @@ export default function QuoteConfigPage() {
             final_price: 0,
             certificates: [],
           };
+          newPart.final_price = calculatePrice(newPart);
 
           newParts.push(newPart);
         }
@@ -539,7 +535,10 @@ export default function QuoteConfigPage() {
 
                 // Recalculate Final Price and Lead Time
                 const calculatedPrice = calculatePrice(part, part.leadTimeType);
-                const calculatedLeadTime = calculateLeadTime(part);
+                const calculatedLeadTime = calculateLeadTime(
+                  part,
+                  part.leadTimeType,
+                );
 
                 part.final_price = calculatedPrice;
                 part.leadTime = calculatedLeadTime;
@@ -660,7 +659,10 @@ export default function QuoteConfigPage() {
           updatedPart,
           updatedPart.leadTimeType,
         );
-        updatedPart.leadTime = calculateLeadTime(updatedPart);
+        updatedPart.leadTime = calculateLeadTime(
+          updatedPart,
+          updatedPart.leadTimeType,
+        );
       }
     }
 
@@ -728,11 +730,9 @@ export default function QuoteConfigPage() {
   };
 
   const standardPrice = parts.reduce(
-    (sum, part) => sum + calculatePrice(part, part.leadTimeType || "standard"),
+    (sum, part) => sum + (part.final_price || 0),
     0,
   );
-
-  const baseLeadTime = Math.max(...parts.map((p) => calculateLeadTime(p)));
 
   const handleSaveDraft = async (
     message: string = "Draft saved successfully",
@@ -746,19 +746,18 @@ export default function QuoteConfigPage() {
     try {
       const partsToSave = parts.filter((p) => unsavedChanges.has(p.id));
 
-      await Promise.all(
-        partsToSave.map(async (part) => {
+      await Promise.all([
+        ...partsToSave.map(async (part) => {
           const payload = {
             quantity: part.quantity,
             lead_time_type: part.leadTimeType,
             final_price: part.final_price,
             lead_time: part.leadTime,
-            rfq_final_price: standardPrice.toFixed(2),
           };
-
           await apiClient.patch(`/rfq/${rfq.id}/parts/${part.id}`, payload);
         }),
-      );
+        apiClient.patch(`/rfq/${rfq.id}`, { final_price: standardPrice }),
+      ]);
 
       setUnsavedChanges(new Set());
       notify.success(message);
@@ -1146,11 +1145,9 @@ export default function QuoteConfigPage() {
               {/* Mini Breakdown */}
               <div className="space-y-3 max-h-[calc(100vh-85px)] overflow-y-auto custom-scrollbar pr-1">
                 {parts.map((p, i) => {
-                  const pPrice = calculatePrice(p, p.leadTimeType);
-                  const calculatedLeadTime = calcLeadTime(
-                    p.leadTimeType,
-                    baseLeadTime,
-                  );
+                  console.log(p, "p");
+                  const pPrice = p.final_price || 0;
+                  const calculatedLeadTime = p.leadTime || 0;
                   return (
                     <div
                       key={p.id}

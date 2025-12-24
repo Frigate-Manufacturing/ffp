@@ -593,8 +593,7 @@ export function EditPartModal({
                           );
 
                           return (
-                            <button
-                              type="button"
+                            <div
                               key={c.value}
                               onClick={() =>
                                 updateLocalPart(
@@ -646,7 +645,7 @@ export function EditPartModal({
                                   </p>
                                 )}
                               </div>
-                            </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -660,9 +659,11 @@ export function EditPartModal({
               {/* Analysis Tab */}
               <TabsContent
                 value="analysis"
-                className="flex-1 flex items-center justify-center p-12 outline-none bg-gray-50/50"
+                className="flex-1 overflow-hidden outline-none bg-gray-50/50 h-full"
               >
-                <DFMAnalysis part={localPart} />
+                <div className="h-full w-full">
+                  <DFMAnalysis part={localPart} />
+                </div>
               </TabsContent>
             </Tabs>
           </div>

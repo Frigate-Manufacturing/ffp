@@ -90,6 +90,7 @@ export default [
       "no-multiple-empty-lines": ["error", { max: 1 }],
       "no-useless-constructor": "off",
       "no-loop-func": "off",
+      "@next/next/no-img-element": "off",
     },
   },
 ];

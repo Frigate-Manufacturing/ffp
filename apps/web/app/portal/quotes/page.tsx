@@ -13,6 +13,7 @@ import { Column } from "@/components/ui/data-table";
 import { IRFQStatuses } from "@/types";
 import { DataView } from "@/components/ui/data-view";
 import Link from "next/link";
+import { formatDate } from "@/lib/format";
 
 // Types based on RFQ API response
 interface Quote {
@@ -168,12 +169,12 @@ export default function QuotesListPage() {
     {
       key: "created_at",
       header: "Created At",
-      render: (row) => row.created_at,
+      render: (row) => formatDate(row.created_at),
     },
     {
       key: "updated_at",
       header: "Updated At",
-      render: (row) => row.updated_at,
+      render: (row) => formatDate(row.updated_at),
     },
   ];
 

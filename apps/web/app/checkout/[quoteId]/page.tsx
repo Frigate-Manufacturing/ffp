@@ -50,7 +50,6 @@ import Link from "next/link";
 import Logo from "@/components/ui/logo";
 import { User } from "@/components/Layouts/sidebar/icons";
 import Footer from "@/components/ui/footer";
-import Image from "next/image";
 
 /* ------------------------------------------------------------------ */
 /* Types */
@@ -733,7 +732,7 @@ export default function CheckoutPage() {
                                 {opt.iconType === "truck" ? (
                                   <Truck className="w-5 h-5" />
                                 ) : (
-                                  <Image
+                                  <img
                                     src="/icons/organzation.svg"
                                     alt=""
                                     className={`w-10 h-10 ${shippingMethod.method === opt.id ? "invert" : ""}`}

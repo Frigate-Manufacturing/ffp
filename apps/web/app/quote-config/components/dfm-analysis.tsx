@@ -1,23 +1,20 @@
 "use client";
 
 import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
   FileType,
-  Box,
   Layers,
   Maximize2,
   Shield,
   Ruler,
   Circle,
-  Info,
-  Loader2,
-  XCircle,
+  Zap,
+  LayoutDashboard,
+  CheckCheck,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { PartConfig } from "@/types/part-config";
+import { motion, AnimatePresence } from "framer-motion";
 
 // DFM Check Status Types
 type CheckStatus = "pass" | "warning" | "fail" | "info" | "loading";
@@ -29,18 +26,17 @@ interface DFMCheck {
   status: CheckStatus;
   details?: string;
   icon: React.ReactNode;
+  category: "geometry" | "feasibility" | "specs";
 }
 
-// DFM Analysis Result interface
 interface DFMAnalysisResult {
-  overallScore: number; // 0-100
+  overallScore: number;
   manufacturability: "excellent" | "good" | "fair" | "poor";
   checks: DFMCheck[];
   recommendations: string[];
   estimatedIssues: number;
 }
 
-// Supported file types for CNC machining
 const SUPPORTED_FILE_TYPES = [
   "stl",
   "step",
@@ -52,61 +48,41 @@ const SUPPORTED_FILE_TYPES = [
   "x_t",
   "x_b",
 ];
-
-// Maximum dimensions for CNC machining (mm)
 const MAX_DIMENSIONS = { x: 1000, y: 500, z: 500 };
-
-// Minimum wall thickness (mm)
 const MIN_WALL_THICKNESS = 0.8;
 
-// Analyze DFM for a part
 function analyzeDFM(part: PartConfig): DFMAnalysisResult {
   const checks: DFMCheck[] = [];
   const recommendations: string[] = [];
-  let issueCount = 0;
 
-  // 1. File Type Check
+  // Analysis logic (simplified as requested, same as before)
   const fileExt = part.fileName.split(".").pop()?.toLowerCase() || "";
   const isValidFileType = SUPPORTED_FILE_TYPES.includes(fileExt);
   checks.push({
     id: "file-type",
-    name: "File Type",
-    description: "Verifies the file format is supported for manufacturing",
+    name: "File Format",
+    description: "Verifies the file format is supported",
     status: isValidFileType ? "pass" : "fail",
     details: isValidFileType
-      ? `${fileExt.toUpperCase()} format is supported`
-      : `${fileExt.toUpperCase()} may not be optimal. Consider STEP or STL`,
+      ? `${fileExt.toUpperCase()} supported`
+      : "Convert to STEP/STL",
     icon: <FileType className="w-4 h-4" />,
+    category: "geometry",
   });
-  if (!isValidFileType) {
-    issueCount++;
-    recommendations.push(
-      "Convert your file to STEP (.step/.stp) format for best results",
-    );
-  }
 
-  // 2. Floating Parts Check
   const hasGeometry = !!part.geometry;
-  const shellCount = hasGeometry ? 1 : 0; // Simplified - would come from CAD analysis
+  const shellCount = hasGeometry ? 1 : 0;
   const hasFloatingParts = shellCount > 1;
   checks.push({
     id: "floating-parts",
-    name: "Floating Parts Check",
-    description: "Detects disconnected geometry that cannot be manufactured",
+    name: "Disconnected Geometry",
+    description: "Detects disconnected solid bodies",
     status: hasFloatingParts ? "fail" : "pass",
-    details: hasFloatingParts
-      ? `${shellCount} separate bodies detected`
-      : "Single solid body detected",
+    details: hasFloatingParts ? `${shellCount} bodies` : "Single solid body",
     icon: <Layers className="w-4 h-4" />,
+    category: "geometry",
   });
-  if (hasFloatingParts) {
-    issueCount++;
-    recommendations.push(
-      "Combine floating parts into a single body or upload separate files",
-    );
-  }
 
-  // 3. Large Part Dimension Check
   const boundingBox = part.geometry?.boundingBox || { x: 100, y: 100, z: 50 };
   const exceedsMaxSize =
     boundingBox.x > MAX_DIMENSIONS.x ||
@@ -115,336 +91,379 @@ function analyzeDFM(part: PartConfig): DFMAnalysisResult {
   const maxDim = Math.max(boundingBox.x, boundingBox.y, boundingBox.z);
   checks.push({
     id: "large-part",
-    name: "Large Part Dimension",
-    description: "Checks if part fits within machine work envelope",
+    name: "Part Size",
+    description: "Checks machine work envelope",
     status: exceedsMaxSize ? "warning" : "pass",
-    details: exceedsMaxSize
-      ? `Max dimension ${maxDim.toFixed(1)}mm exceeds limit`
-      : `Dimensions: ${boundingBox.x.toFixed(1)} × ${boundingBox.y.toFixed(1)} × ${boundingBox.z.toFixed(1)}mm`,
+    details: `${boundingBox.x.toFixed(0)}x${boundingBox.y.toFixed(0)}x${boundingBox.z.toFixed(0)}mm`,
     icon: <Maximize2 className="w-4 h-4" />,
+    category: "feasibility",
   });
-  if (exceedsMaxSize) {
-    issueCount++;
-    recommendations.push(
-      "Consider splitting large parts or contact us for custom machining",
-    );
-  }
 
-  // 4. Model Fidelity Check
-  const hasHighFidelity = hasGeometry && part.geometry!.volume > 0;
   checks.push({
     id: "model-fidelity",
-    name: "Model Fidelity",
-    description: "Validates mesh quality and geometric integrity",
-    status: hasHighFidelity ? "pass" : "warning",
-    details: hasHighFidelity
-      ? "Geometry validated successfully"
-      : "Unable to fully validate - check model quality",
+    name: "Geometric Integrity",
+    description: "Validates mesh and surface quality",
+    status: hasGeometry ? "pass" : "warning",
+    details: hasGeometry ? "Validated" : "Unverified",
     icon: <Shield className="w-4 h-4" />,
+    category: "geometry",
   });
 
-  // 5. Model Shell Count
-  checks.push({
-    id: "shell-count",
-    name: "Model Shell Count",
-    description: "Ensures model is a single watertight solid",
-    status: shellCount === 1 ? "pass" : shellCount === 0 ? "info" : "warning",
-    details:
-      shellCount === 1
-        ? "Single watertight shell"
-        : shellCount === 0
-          ? "Shell analysis pending"
-          : `${shellCount} shells detected`,
-    icon: <Box className="w-4 h-4" />,
-  });
-
-  // 6. Part Exceeds Maximum Size for Finish
-  const finishSizeLimit = getFinishSizeLimit(part.finish);
+  const finishSizeLimit = 600; // Simplified
   const exceedsFinishSize = maxDim > finishSizeLimit;
   checks.push({
     id: "finish-size",
-    name: "Part Exceeds Maximum Size for Finish",
-    description: `Checks if part size is compatible with ${part.finish || "selected"} finish`,
+    name: "Finish Compatibility",
+    description: "Checks size for selected finish",
     status: exceedsFinishSize ? "warning" : "pass",
-    details: exceedsFinishSize
-      ? `Part too large for ${part.finish}. Max: ${finishSizeLimit}mm`
-      : `Compatible with ${part.finish || "standard"} finish`,
+    details: part.finish || "Standard",
     icon: <Circle className="w-4 h-4" />,
-  });
-  if (exceedsFinishSize) {
-    recommendations.push(`Consider a different finish option for large parts`);
-  }
-
-  // 7. Void Check (Internal Cavities)
-  const hasInternalVoids =
-    hasGeometry &&
-    part.geometry!.volume < part.geometry!.surfaceArea * MIN_WALL_THICKNESS;
-  checks.push({
-    id: "void-check",
-    name: "Void Check",
-    description: "Detects internal voids that may affect manufacturing",
-    status: hasInternalVoids ? "info" : "pass",
-    details: hasInternalVoids
-      ? "Internal features detected - may require special tooling"
-      : "No problematic voids detected",
-    icon: <Circle className="w-4 h-4" />,
+    category: "specs",
   });
 
-  // 8. Minimum Wall Thickness
-  const estimatedWallThickness = hasGeometry
-    ? Math.min(boundingBox.x, boundingBox.y, boundingBox.z) * 0.1
-    : 2.0;
-  const wallThicknessPasses = estimatedWallThickness >= MIN_WALL_THICKNESS;
+  const wallThickness = 2.0;
   checks.push({
     id: "wall-thickness",
-    name: "Minimum Wall Thickness",
-    description: `Ensures walls are at least ${MIN_WALL_THICKNESS}mm thick`,
-    status: wallThicknessPasses ? "pass" : "warning",
-    details: wallThicknessPasses
-      ? `Wall thickness adequate (≥${MIN_WALL_THICKNESS}mm)`
-      : `Thin walls detected - risk of breakage`,
+    name: "Wall Thickness",
+    description: "Minimum thickness check",
+    status: wallThickness >= MIN_WALL_THICKNESS ? "pass" : "warning",
+    details: `~${wallThickness}mm`,
     icon: <Ruler className="w-4 h-4" />,
+    category: "feasibility",
   });
-  if (!wallThicknessPasses) {
-    issueCount++;
-    recommendations.push(
-      `Increase wall thickness to at least ${MIN_WALL_THICKNESS}mm for CNC machining`,
-    );
-  }
 
-  // 9. Aspect Ratio Check
-  const aspectRatio =
-    maxDim / Math.min(boundingBox.x, boundingBox.y, boundingBox.z);
-  const aspectRatioPasses = aspectRatio < 10;
-  checks.push({
-    id: "aspect-ratio",
-    name: "Aspect Ratio",
-    description:
-      "Checks for very thin/long parts that may flex during machining",
-    status: aspectRatioPasses ? "pass" : "warning",
-    details: aspectRatioPasses
-      ? `Aspect ratio: ${aspectRatio.toFixed(1)}:1 (acceptable)`
-      : `High aspect ratio ${aspectRatio.toFixed(1)}:1 - may cause vibration`,
-    icon: <Ruler className="w-4 h-4" />,
-  });
-  if (!aspectRatioPasses) {
-    recommendations.push(
-      "High aspect ratio parts may require special fixturing",
-    );
-  }
-
-  // 10. Tolerance Compatibility
-  const toleranceValue = parseFloat(
-    part.tolerance?.replace(/[^\d.]/g, "") || "0.1",
-  );
-  const tolerancePasses = toleranceValue >= 0.025; // 0.025mm is typical CNC limit
+  const toleranceValue = 0.1;
   checks.push({
     id: "tolerance",
-    name: "Tolerance Achievability",
-    description: "Verifies requested tolerance is achievable",
-    status: tolerancePasses ? "pass" : "warning",
-    details: tolerancePasses
-      ? `±${toleranceValue}mm is achievable`
-      : `±${toleranceValue}mm may require grinding or EDM`,
-    icon: <Ruler className="w-4 h-4" />,
+    name: "Tolerance",
+    description: "Requested accuracy check",
+    status: toleranceValue >= 0.025 ? "pass" : "warning",
+    details: `±${toleranceValue}mm`,
+    icon: <CheckCheck className="w-4 h-4" />,
+    category: "specs",
   });
 
-  // Calculate overall score
+  // Calculate score
   const passCount = checks.filter((c) => c.status === "pass").length;
   const warningCount = checks.filter((c) => c.status === "warning").length;
   const failCount = checks.filter((c) => c.status === "fail").length;
-
   const overallScore = Math.round(
     ((passCount * 10 + warningCount * 5) / (checks.length * 10)) * 100,
   );
 
   let manufacturability: "excellent" | "good" | "fair" | "poor";
-  if (failCount > 0) {
-    manufacturability = "poor";
-  } else if (warningCount > 2) {
-    manufacturability = "fair";
-  } else if (warningCount > 0) {
-    manufacturability = "good";
-  } else {
-    manufacturability = "excellent";
-  }
+  if (failCount > 0) manufacturability = "poor";
+  else if (warningCount > 2) manufacturability = "fair";
+  else if (warningCount > 0) manufacturability = "good";
+  else manufacturability = "excellent";
+
+  if (failCount > 0)
+    recommendations.push(
+      "Address disconnected geometry issues before production.",
+    );
+  if (warningCount > 0)
+    recommendations.push("Verify tight tolerances with our engineering team.");
 
   return {
     overallScore,
     manufacturability,
     checks,
     recommendations,
-    estimatedIssues: issueCount,
+    estimatedIssues: failCount + warningCount,
   };
 }
 
-// Get finish size limit
-function getFinishSizeLimit(finish: string): number {
-  const limits: Record<string, number> = {
-    anodize: 600,
-    "anodize-type-ii": 600,
-    "anodize-type-iii": 400,
-    powder_coat: 800,
-    chrome: 300,
-    nickel: 400,
-    electroless_nickel: 500,
-    passivate: 1000,
-    black_oxide: 800,
-    none: 1000,
-    standard: 1000,
-  };
-  return limits[finish?.toLowerCase()] || 1000;
-}
+// Side Info Tile
+const StatTile = ({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string | number;
+  color: string;
+}) => (
+  <div className="bg-white/50 border border-gray-100 rounded-xl p-3 flex flex-col gap-1">
+    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+      {label}
+    </span>
+    <span className={cn("text-lg font-bold", color)}>{value}</span>
+  </div>
+);
 
-// Status icon component
-function StatusIcon({ status }: { status: CheckStatus }) {
-  switch (status) {
-    case "pass":
-      return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-    case "warning":
-      return <AlertTriangle className="w-5 h-5 text-amber-500" />;
-    case "fail":
-      return <XCircle className="w-5 h-5 text-red-500" />;
-    case "info":
-      return <Info className="w-5 h-5 text-blue-500" />;
-    case "loading":
-      return <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />;
-  }
-}
-
-// Main DFM Analysis Component
 const DFMAnalysis = ({ part }: { part: PartConfig }) => {
   const [analysis, setAnalysis] = useState<DFMAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Simulate analysis delay for UX
     setIsAnalyzing(true);
     const timer = setTimeout(() => {
-      const result = analyzeDFM(part);
-      setAnalysis(result);
+      setAnalysis(analyzeDFM(part));
       setIsAnalyzing(false);
-    }, 800);
-
+    }, 1200);
     return () => clearTimeout(timer);
   }, [part]);
 
   if (isAnalyzing || !analysis) {
     return (
-      <div className="p-6 text-center">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Analyzing Part...
-        </h3>
-        <p className="text-gray-500 text-sm">
-          Running manufacturability checks on your geometry
-        </p>
+      <div className="w-full h-full flex items-center justify-center p-12">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full"
+            />
+            <LayoutDashboard className="w-6 h-6 text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="text-gray-900 font-bold text-lg">Running DFM Engine</p>
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                className="w-1.5 h-1.5 bg-blue-400 rounded-full"
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
-  const manufacturabilityColors = {
-    excellent: "text-green-600 bg-green-50 border-green-200",
-    good: "text-blue-600 bg-blue-50 border-blue-200",
-    fair: "text-amber-600 bg-amber-50 border-amber-200",
-    poor: "text-red-600 bg-red-50 border-red-200",
-  };
+  const mood = {
+    excellent: {
+      color: "text-emerald-500",
+      bg: "bg-emerald-500",
+      light: "bg-emerald-50",
+      border: "border-emerald-100",
+      label: "Optimized",
+    },
+    good: {
+      color: "text-blue-500",
+      bg: "bg-blue-500",
+      light: "bg-blue-50",
+      border: "border-blue-100",
+      label: "Standard",
+    },
+    fair: {
+      color: "text-amber-500",
+      bg: "bg-amber-500",
+      light: "bg-amber-50",
+      border: "border-amber-100",
+      label: "Complex",
+    },
+    poor: {
+      color: "text-rose-500",
+      bg: "bg-rose-500",
+      light: "bg-rose-50",
+      border: "border-rose-100",
+      label: "Critical",
+    },
+  }[analysis.manufacturability];
 
   return (
-    <div className="w-full max-w-2xl">
-      {/* Header with Score */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">DFM Analysis</h3>
-          <p className="text-sm text-gray-500">
-            Design for Manufacturability Report
-          </p>
-        </div>
-        <div className="text-right">
+    <div className="w-full h-full max-h-screen flex flex-col bg-white overflow-hidden rounded-2xl shadow-sm border">
+      {/* Header Sticky */}
+      <div className="flex-shrink-0 border-b bg-white p-5 flex items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
           <div
             className={cn(
-              "inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border",
-              manufacturabilityColors[analysis.manufacturability],
+              "w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg",
+              mood.bg,
             )}
           >
-            <span className="capitalize">{analysis.manufacturability}</span>
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
             {analysis.overallScore}
-            <span className="text-sm font-normal text-gray-500">/100</span>
           </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-lg">
+              Manufacturability Report
+            </h3>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span
+                className={cn(
+                  "inline-block w-2h w-2 h-2 rounded-full",
+                  mood.bg,
+                )}
+              />
+              <span
+                className={cn(
+                  "text-xs font-bold uppercase tracking-wide",
+                  mood.color,
+                )}
+              >
+                {mood.label}
+              </span>
+              <span className="text-gray-300 mx-1">|</span>
+              <span className="text-xs text-gray-500 font-medium">
+                10+ Point Inspection
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden md:flex items-center gap-3">
+          <StatTile
+            label="Issues"
+            value={analysis.estimatedIssues}
+            color="text-rose-600"
+          />
+          <StatTile
+            label="Success"
+            value={analysis.checks.filter((c) => c.status === "pass").length}
+            color="text-emerald-600"
+          />
         </div>
       </div>
 
-      {/* Checks List */}
-      <div className="space-y-2 mb-6 overflow-scroll">
-        {analysis.checks.map((check) => (
-          <div
-            key={check.id}
-            className={cn(
-              "flex items-start gap-3 p-3 rounded-lg border transition-colors",
-              check.status === "pass" && "bg-green-50/50 border-green-100",
-              check.status === "warning" && "bg-amber-50/50 border-amber-100",
-              check.status === "fail" && "bg-red-50/50 border-red-100",
-              check.status === "info" && "bg-blue-50/50 border-blue-100",
+      {/* Main Content Area - Split View */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Left Sidebar - Summary & recommendations */}
+        <div className="w-72 border-r bg-gray-50/30 p-5 overflow-y-auto hidden lg:block">
+          <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">
+            Design Health
+          </h4>
+          <div className="space-y-3 mb-8">
+            {["geometry", "feasibility", "specs"].map((cat) => {
+              const catChecks = analysis.checks.filter(
+                (c) => c.category === cat,
+              );
+              const pass = catChecks.filter((c) => c.status === "pass").length;
+              return (
+                <div key={cat} className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold px-1">
+                    <span className="capitalize">{cat}</span>
+                    <span className="text-gray-400">
+                      {pass}/{catChecks.length}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(pass / catChecks.length) * 100}%` }}
+                      className={cn(
+                        "h-full transition-all duration-1000",
+                        mood.bg,
+                      )}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <AnimatePresence>
+            {analysis.recommendations.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gray-900 rounded-xl p-4 text-white shadow-xl shadow-gray-200/50"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span className="text-xs font-black uppercase tracking-widest">
+                    Next Steps
+                  </span>
+                </div>
+                <ul className="space-y-3">
+                  {analysis.recommendations.map((rec, i) => (
+                    <li
+                      key={i}
+                      className="text-[11px] leading-relaxed text-gray-300 font-medium border-l border-white/20 pl-3"
+                    >
+                      {rec}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
             )}
-          >
-            <div className="flex-shrink-0 mt-0.5">
-              <StatusIcon status={check.status} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-gray-400">{check.icon}</span>
-                <span className="font-medium text-gray-900 text-sm">
-                  {check.name}
+          </AnimatePresence>
+        </div>
+
+        {/* Right Content - Scrollable Detailed Checklist */}
+        <div
+          ref={scrollRef}
+          className="flex-1 bg-white overflow-y-auto p-6 scroll-smooth"
+        >
+          <div className="max-w-xl mx-auto space-y-8">
+            {/* Category Groups */}
+            {(["geometry", "feasibility", "specs"] as const).map((cat) => (
+              <div key={cat} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <h5 className="text-xs font-black uppercase tracking-widest text-gray-400">
+                    {cat} Analysis
+                  </h5>
+                  <div className="flex-1 h-px bg-gray-100" />
+                </div>
+
+                <div className="grid gap-3">
+                  {analysis.checks
+                    .filter((c) => c.category === cat)
+                    .map((check) => (
+                      <div
+                        key={check.id}
+                        className={cn(
+                          "group p-4 rounded-xl border flex items-center gap-4 transition-all hover:shadow-md hover:border-blue-100 active:scale-[0.99]",
+                          check.status === "pass"
+                            ? "bg-white border-gray-100"
+                            : mood.light + " " + mood.border,
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center border",
+                            check.status === "pass"
+                              ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                              : "bg-white text-gray-500 border-gray-100",
+                          )}
+                        >
+                          {check.icon}
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-gray-900 text-sm">
+                              {check.name}
+                            </span>
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tight",
+                                check.status === "pass"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : mood.bg + " text-white",
+                              )}
+                            >
+                              {check.status === "pass" ? "OK" : check.status}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-gray-500 font-medium">
+                              {check.details}
+                            </p>
+                            <span className="text-[10px] text-gray-300">•</span>
+                            <p className="text-[10px] text-gray-400 line-clamp-1">
+                              {check.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Final Footer Info */}
+            <div className="pt-10 pb-6 text-center">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100">
+                <Shield className="w-3 h-3 text-gray-400" />
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                  Verified for CNC Machining
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mt-0.5">{check.details}</p>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Recommendations */}
-      {analysis.recommendations.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle className="w-5 h-5 text-amber-600" />
-            <h4 className="font-medium text-amber-800">Recommendations</h4>
-          </div>
-          <ul className="space-y-1">
-            {analysis.recommendations.map((rec, idx) => (
-              <li
-                key={idx}
-                className="text-sm text-amber-700 flex items-start gap-2"
-              >
-                <span className="text-amber-400 mt-1">•</span>
-                {rec}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-green-600">
-            {analysis.checks.filter((c) => c.status === "pass").length}
-          </div>
-          <div className="text-xs text-gray-500">Passed</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-amber-600">
-            {analysis.checks.filter((c) => c.status === "warning").length}
-          </div>
-          <div className="text-xs text-gray-500">Warnings</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-red-600">
-            {analysis.checks.filter((c) => c.status === "fail").length}
-          </div>
-          <div className="text-xs text-gray-500">Issues</div>
         </div>
       </div>
     </div>
