@@ -946,6 +946,7 @@ span.flatpickr-weekday,
   display: none; /* Chrome, Safari and Opera */
 }
 
+/* Refined AI-themed animations for the suggestion sidebar with smoother transitions */
 @keyframes gradient-animation {
   0% {
     background-position: 0% 50%;
@@ -957,8 +958,62 @@ span.flatpickr-weekday,
     background-position: 0% 50%;
   }
 }
+
+@keyframes scan-line {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(300%);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+}
+
 .animated-gradient-btn {
   background: linear-gradient(90deg, #3b82f6, #8b5cf6, #6366f1, #3b82f6);
   background-size: 300% 100%;
-  animation: gradient-animation 4s ease infinite;
+  animation: gradient-animation 6s ease-in-out infinite;
+}
+
+.ai-scan-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(59, 130, 246, 0.1),
+    transparent
+  );
+  height: 200px;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.sidebar-open .ai-scan-overlay {
+  animation: scan-line 4s linear infinite;
+}
+
+.pulse-glow {
+  animation: pulse-ring 2s ease-in-out infinite;
 }

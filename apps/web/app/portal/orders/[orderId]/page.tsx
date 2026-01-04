@@ -1,295 +1,450 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Package,
-  CheckCircle,
-  Truck,
-  FileText,
-  MapPin,
-  DollarSign,
-  AlertCircle,
-  Download,
-  Loader2,
-} from "lucide-react";
-import {
-  getOrder,
-  getKanbanState,
-  getOrderTimeline,
-} from "../../../../lib/database";
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { apiClient } from "@/lib/api";
+import { formatCurrencyGeneric } from "@/lib/format";
+import { RFQKanban } from "./components/RFQKanban";
+import { generateRandomSlug } from "@/lib/utils";
+import CustomLoader from "@/components/ui/loader/CustomLoader";
+import RfqSideDrawer from "./components/rfq-side-drawer";
+import { CommandBlock } from "@/components/ui/command-block";
+import Documents from "./components/documents";
 
-export default function CustomerOrderTrackingPage() {
-  const router = useRouter();
+/* =======================
+   TYPES (FROM API)
+======================= */
+
+export type IOrderFull = {
+  rfq: {
+    rfq_code: string;
+    status: string;
+    final_price: number;
+  };
+  order: {
+    order_code: string;
+    created_at: string;
+    subtotal: number;
+    tax_amount: number;
+    total_amount: number;
+    payment_status: string;
+    status: string;
+    address_snapshot: {
+      name: string;
+      email: string;
+      phone: string;
+      phoneExt: string;
+      street1: string;
+      street2?: string;
+      city: string;
+      zip: string;
+      country: string;
+    };
+  };
+  parts: Array<{
+    order_part_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+    lead_time: number;
+    lead_time_type: string;
+    status: string;
+    order_part_code: string;
+    rfq_part: {
+      file_name: string;
+      material: string;
+      finish: string;
+      tolerance: string;
+      inspection: string;
+      notes: string;
+      cad_file_url: string;
+    };
+  }>;
+  shipping: {
+    shipping_information: {
+      service: string;
+      method: string;
+      accountNumber?: string;
+    };
+  };
+};
+
+/* =======================
+   PAGE
+======================= */
+
+type Tab = "general" | "workflow" | "documents";
+
+export default function OrderPage() {
+  const searchParams = useSearchParams();
+  const searchQuery = (searchParams?.get("tab") as Tab) || "general";
+  const [activeTab, setActiveTab] = useState<Tab>(searchQuery);
+
   const params = useParams();
-  const orderId = params?.orderId as string;
-
-  const [orderData, setOrderData] = useState<any>(null);
-  const [timeline, setTimeline] = useState<any[]>([]);
-  const [progress, setProgress] = useState(0);
+  const orderId = (params?.orderId as string) || "";
+  const [selectedPart, setSelectedPart] = useState<any>(null);
+  const [data, setData] = useState<IOrderFull>();
   const [loading, setLoading] = useState(true);
 
+  const fetchData = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) setLoading(true);
+        const response = await apiClient.get(`/orders/${orderId}`);
+        setData(response.data);
+      } catch (error) {
+        console.error(error);
+        if (!silent) setLoading(false);
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [orderId],
+  );
+
   useEffect(() => {
-    loadOrderTracking();
-  }, [orderId]);
-
-  const loadOrderTracking = async () => {
-    if (!orderId) return;
-
-    try {
-      setLoading(true);
-
-      // Load order data
-      const order = await getOrder(orderId);
-      if (!order) {
-        alert("Order not found");
-        router.push("/portal/orders");
-        return;
-      }
-      setOrderData(order);
-
-      // Load kanban state for progress
-      const kanbanState = await getKanbanState(orderId);
-      if (kanbanState.length > 0) {
-        const completedParts = kanbanState.filter(
-          (p: any) => p.status === "done",
-        ).length;
-        const calculatedProgress = Math.round(
-          (completedParts / kanbanState.length) * 100,
-        );
-        setProgress(calculatedProgress);
-      }
-
-      // Load timeline events
-      const timelineData = await getOrderTimeline(orderId);
-      setTimeline(timelineData);
-    } catch (error) {
-      console.error("Error loading order tracking:", error);
-      alert("Failed to load order tracking. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading order details...</p>
-        </div>
+      <div className="h-screen flex items-center justify-center">
+        <CustomLoader />
       </div>
     );
   }
 
-  if (!orderData) return <div>Order not found</div>;
-
-  const deliveryDate = new Date(orderData.created_at);
-  deliveryDate.setDate(deliveryDate.getDate() + (orderData.lead_time || 7));
-
-  // Map timeline icons
-  const eventIcons: Record<string, any> = {
-    order_placed: CheckCircle,
-    rfq_created: FileText,
-    bid_received: DollarSign,
-    bid_approved: CheckCircle,
-    production_started: Package,
-    part_completed: CheckCircle,
-    shipped: Truck,
-    delivered: MapPin,
-  };
+  if (!data) {
+    return <div>Order not found</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8 flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/portal/orders")}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-3xl font-bold text-gray-900">Order Tracking</h1>
-            <p className="text-gray-600">Order #{orderData.id}</p>
-          </div>
-          <Badge className="bg-blue-100 text-blue-700 border-0 text-lg px-4 py-2">
-            {orderData.status?.toUpperCase() || "PROCESSING"}
-          </Badge>
-        </div>
-
-        {/* Progress Bar */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-3">
-              <p className="font-semibold text-gray-900">Production Progress</p>
-              <p className="text-sm text-gray-600">{progress}% Complete</p>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-blue-600 h-3 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
-              <span>
-                Placed: {new Date(orderData.created_at).toLocaleDateString()}
-              </span>
-              <span>Est. Delivery: {deliveryDate.toLocaleDateString()}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Timeline */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Order Timeline</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-8">
-              {timeline.map((event: any, index: number) => {
-                const Icon = eventIcons[event.event_type] || FileText;
-                const isLast = index === timeline.length - 1;
-
-                return (
-                  <div key={event.id} className="relative">
-                    {!isLast && (
-                      <div className="absolute left-6 top-12 w-0.5 h-full bg-green-500" />
-                    )}
-
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 relative z-10 bg-green-100 border-2 border-green-500">
-                        <Icon className="w-6 h-6 text-green-600" />
-                      </div>
-
-                      <div className="flex-1 pb-8">
-                        <div className="flex items-start justify-between mb-1">
-                          <h3 className="font-semibold text-gray-900">
-                            {event.title}
-                          </h3>
-                          {event.created_at && (
-                            <p className="text-sm text-gray-500">
-                              {new Date(event.created_at).toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-700">
-                          {event.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Order Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-blue-600" />
-                Order Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {orderData.parts?.map((part: any, index: number) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b last:border-0"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {part.file_name}
-                      </p>
-                      <p className="text-sm text-gray-600">{part.material}</p>
-                    </div>
-                    <Badge variant="outline">Qty: {part.quantity}</Badge>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-                Order Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total Parts:</span>
-                  <span className="font-semibold">
-                    {orderData.parts?.length || 0}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Lead Time:</span>
-                  <span className="font-semibold">
-                    {orderData.lead_time} days
-                  </span>
-                </div>
-                <div className="flex justify-between pt-3 border-t">
-                  <span className="font-semibold text-gray-900">
-                    Total Amount:
-                  </span>
-                  <span className="text-xl font-bold text-blue-600">
-                    $
-                    {orderData.total_price?.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Actions */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="outline" className="flex-1">
-                <FileText className="w-4 h-4 mr-2" />
-                View Order Details
-              </Button>
-              <Button variant="outline" className="flex-1">
-                <Download className="w-4 h-4 mr-2" />
-                Download Invoice
-              </Button>
-              <Button variant="outline" className="flex-1">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Contact Support
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Privacy Notice */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-blue-900">Quality Guaranteed</p>
-            <p className="text-sm text-blue-800">
-              Your parts are being manufactured by verified suppliers. All
-              updates are tracked in real-time for your visibility.
-            </p>
-          </div>
+    <div className="relative max-w-7xl h-full mx-auto px-2 py-3 space-y-10">
+      {/* HEADER */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {data.order.order_code}
+          </h1>
+          <StatusPill status={data.order.status} />
         </div>
       </div>
+      {/* TABS */}
+      <div className="border-b flex gap-6 text-sm">
+        {["general", "workflow", "documents"].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => {
+              setActiveTab(tab as any);
+            }}
+            className={`pb-3 capitalize ${
+              activeTab === tab
+                ? "border-b-2 border-indigo-600 text-indigo-600 font-medium"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+      {/* PARTS TAB */}
+      {activeTab === "general" && (
+        <section className="space-y-6">
+          {/* Meta Data */}
+          <section className="space-y-2">
+            <SectionTitle title="Meta Data" />
+            <div className=" grid grid-cols-2 items-center gap-6 bg-white border rounded-lg p-4 text-sm space-y-2">
+              <Meta label="RFQ" value={data.rfq.rfq_code} />
+              <Meta
+                label="Created"
+                value={new Date(data.order.created_at).toLocaleDateString()}
+              />
+              <Meta label="Items" value={data.parts.length.toString()} />
+              <Meta
+                label="Total Value"
+                value={formatCurrencyGeneric(data.order.total_amount)}
+                strong
+              />
+            </div>
+          </section>
+          {/* SHIPPING */}
+          <section className="space-y-2">
+            <SectionTitle title="Shipping" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AddressCard
+                title="Ship To"
+                name={data.order.address_snapshot.name}
+                address={[
+                  data.order.address_snapshot.street1,
+                  data.order.address_snapshot.street2,
+                  `${data.order.address_snapshot.city} - ${data.order.address_snapshot.zip}`,
+                  data.order.address_snapshot.country,
+                ]}
+              />
+
+              <div className="bg-slate-50 border rounded-lg p-4 text-sm space-y-2">
+                <div className="text-xs uppercase tracking-wide text-slate-400">
+                  Shipping Method
+                </div>
+                <div className="font-medium text-slate-900">
+                  {data.shipping.shipping_information.service.toUpperCase()}
+                  <div className="uppercase">
+                    {data.shipping.shipping_information.method}
+                  </div>
+                </div>
+                <div className="text-xs uppercase tracking-wide text-slate-400">
+                  Tracking Number
+                </div>
+                <div className="font-medium max-w-[200px] text-slate-900">
+                  <CommandBlock command={generateRandomSlug()} />
+                </div>
+
+                {data.shipping.shipping_information.accountNumber && (
+                  <div className="text-slate-600">
+                    Account: ****
+                    {data.shipping.shipping_information.accountNumber.slice(-4)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* PART CARDS */}
+          <section className="space-y-4">
+            <SectionTitle title="Line Items" />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {data.parts.map((part) => (
+                <button
+                  key={part.order_part_id}
+                  onClick={() => setSelectedPart(part)}
+                  className="text-left bg-white border rounded-lg p-5 space-y-3 hover:bg-slate-50 transition"
+                >
+                  <div className="font-medium text-slate-900">
+                    {part.rfq_part.file_name}
+                  </div>
+
+                  <div className="text-xs text-slate-500">
+                    {part.rfq_part.material} • {part.rfq_part.finish}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <Value label="Qty" value={part.quantity} />
+                    <Value
+                      label="Unit"
+                      value={formatCurrencyGeneric(part.unit_price)}
+                    />
+                    <Value
+                      label="Total"
+                      value={formatCurrencyGeneric(part.total_price)}
+                      strong
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* SUMMARY TABLE */}
+          <section className="space-y-4">
+            <SectionTitle title="Summary" />
+
+            <div className="bg-white border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                {/* Header */}
+                <thead className="bg-slate-50 border-b">
+                  <tr>
+                    <th className="px-5 py-3 text-left font-medium text-slate-600">
+                      Line Item
+                    </th>
+                    <th className="px-5 py-3 text-right font-medium text-slate-600">
+                      Qty
+                    </th>
+                    <th className="px-5 py-3 text-right font-medium text-slate-600">
+                      Unit Price
+                    </th>
+                    <th className="px-5 py-3 text-right font-medium text-slate-600">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+
+                {/* Body */}
+                <tbody className="divide-y">
+                  {data.parts.map((part) => (
+                    <tr key={part.order_part_id}>
+                      <td className="px-5 py-4 font-medium text-slate-900">
+                        {part.rfq_part.file_name}
+                      </td>
+                      <td className="px-5 py-4 text-right">{part.quantity}</td>
+                      <td className="px-5 py-4 text-right">
+                        {formatCurrencyGeneric(part.unit_price)}
+                      </td>
+                      <td className="px-5 py-4 text-right font-medium">
+                        {formatCurrencyGeneric(part.total_price)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+
+                {/* Footer */}
+                <tfoot className="bg-slate-50 border-t">
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-5 py-3 text-right text-slate-500"
+                    >
+                      Subtotal
+                    </td>
+                    <td className="px-5 py-3 text-right font-medium">
+                      {formatCurrencyGeneric(data.order.subtotal)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-5 py-3 text-right font-semibold"
+                    >
+                      Total
+                    </td>
+                    <td className="px-5 py-3 text-right font-semibold text-indigo-600">
+                      {formatCurrencyGeneric(data.order.total_amount)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        </section>
+      )}
+      {/* WORKFLOW */}
+      {activeTab === "workflow" && (
+        <RFQKanban
+          parts={data.parts}
+          onRefresh={() => fetchData(true)}
+          onItemClick={(part) => setSelectedPart(part)}
+        />
+      )}
+      {/* DOCUMENTS */}
+      {activeTab === "documents" && (
+        <Documents orderId={orderId} inView={activeTab === "documents"} />
+      )}
+      {/* SIDE DRAWER */}
+      {selectedPart && (
+        <RfqSideDrawer
+          part={selectedPart}
+          onClose={() => setSelectedPart(null)}
+        />
+      )}
     </div>
   );
 }
+
+/* =======================
+   UI HELPERS (UNCHANGED)
+======================= */
+
+export const StatusPill = ({ status }: { status: string }) => (
+  <span className="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-700">
+    {status.toUpperCase()}
+  </span>
+);
+
+export const SectionTitle = ({ title }: { title: string }) => (
+  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+    {title}
+  </h2>
+);
+
+export const Meta = ({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) => (
+  <div>
+    <div className="text-xs uppercase tracking-wide text-slate-400">
+      {label}
+    </div>
+    <div
+      className={`${strong ? "font-semibold text-slate-900" : "text-slate-700"}`}
+    >
+      {value}
+    </div>
+  </div>
+);
+
+export const Value = ({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string | number;
+  strong?: boolean;
+}) => (
+  <div>
+    <div className="text-xs text-slate-400">{label}</div>
+    <div
+      className={`${strong ? "font-semibold text-slate-900" : "text-slate-700"}`}
+    >
+      {value}
+    </div>
+  </div>
+);
+
+export const AddressCard = ({
+  title,
+  name,
+  address,
+}: {
+  title: string;
+  name: string;
+  address: (string | undefined)[];
+}) => (
+  <div className="bg-white border rounded-lg p-4 text-sm space-y-1">
+    <div className="text-xs uppercase tracking-wide text-slate-400">
+      {title}
+    </div>
+    <div className="font-medium">{name}</div>
+    {address.map(
+      (line, i) =>
+        line && (
+          <div key={i} className="text-slate-600">
+            {line}
+          </div>
+        ),
+    )}
+  </div>
+);
+
+export const Detail = ({
+  label,
+  value,
+  strong,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) => (
+  <div>
+    <div className="text-xs uppercase tracking-wide text-slate-400">
+      {label}
+    </div>
+    <div
+      className={`${strong ? "font-semibold text-slate-900" : "text-slate-700"}`}
+    >
+      {value}
+    </div>
+  </div>
+);
+
+export const Placeholder = ({ title }: { title: string }) => (
+  <div className="bg-slate-50 border border-dashed rounded-lg p-10 text-center text-sm text-slate-500">
+    {title} content will appear here.
+  </div>
+);

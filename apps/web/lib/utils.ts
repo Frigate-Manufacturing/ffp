@@ -41,7 +41,7 @@ export function processParts(parts: any[]) {
       status: part.status || "active",
       fileName: part.file_name,
       filePath: part.cad_file_url,
-      finalPrice: part.final_price,
+      final_price: part.final_price,
       cadFileType: part.cad_file_type,
       material: part.material,
       quantity: part.quantity || 1,
@@ -60,4 +60,15 @@ export function processParts(parts: any[]) {
   });
 
   return processedParts as PartConfig[];
+}
+
+export function generateRandomSlug(prefix = "", length = 8): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let slug = "";
+
+  for (let i = 0; i < length; i++) {
+    slug += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+
+  return prefix ? `${prefix}-${slug}` : slug;
 }

@@ -5,8 +5,9 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
-import type { Session } from "next-auth"
+import type { Session } from "next-auth";
 import { PermissionsProvider } from "@/providers/permissions-provider";
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 
 /**
  * Step 13: React Query Configuration
@@ -35,7 +36,13 @@ function makeQueryClient() {
   });
 }
 
-export default function Providers({ session, children }: { session: Session | null, children: React.ReactNode }) {
+export default function Providers({
+  session,
+  children,
+}: {
+  session: Session | null;
+  children: React.ReactNode;
+}) {
   // Create a stable query client instance per component mount
   // This ensures SSR compatibility
   const [queryClient] = useState(() => makeQueryClient());

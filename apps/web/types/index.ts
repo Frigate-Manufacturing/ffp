@@ -2,8 +2,11 @@ export type IRFQStatuses =
   | "draft"
   | "pending"
   | "quoted"
+  | "submitted"
   | "accepted"
-  | "rejected";
+  | "rejected"
+  | "payment pending"
+  | "paid";
 
 export type ICategory = {
   id: string;
@@ -70,4 +73,13 @@ export type IGroupTolerance = {
   description: string;
   range_value: number;
   percentage: number;
+};
+
+export type IGroupOrders = {
+  order_code: string;
+  total_price: number;
+  confirmed_at: Date;
+  payment_status: string;
+  part_count: number;
+  created_at: Date;
 };

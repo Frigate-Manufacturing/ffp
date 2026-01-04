@@ -14,7 +14,7 @@ import { CurrentUser } from './user.decorator';
 
 import { compare, hash } from 'bcrypt';
 import { randomBytes } from 'crypto';
-import { Tables } from '../../libs/constants';
+import { SQLFunctions, Tables } from '../../libs/constants';
 import { AuthDto, LogoutDto, RefreshTokenDto } from './auth.dto';
 
 @Controller('auth')
@@ -109,6 +109,106 @@ export class AuthController {
 
       throw new HttpException(
         'Internal Server Error',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('register')
+  async register(@Body() body: any) {
+    try {
+      const {
+        email,
+        password,
+        organization_name,
+        name,
+        phone,
+        referralSource,
+      } = body;
+
+      // Hash the password
+      const hashedPassword = await hash(password, 12);
+
+      const client = this.supabaseService.getClient();
+      const { data: user, error } = await client.rpc(SQLFunctions.createUser, {
+        p_email: email,
+        p_password: hashedPassword,
+        p_organization_name: organization_name,
+        p_name: name,
+        p_phone: phone,
+        p_source: referralSource || '',
+      });
+
+      if (error) {
+        // Handle unique violation or other errors from RPC
+        if (error.code === '23505') {
+          throw new HttpException(
+            'User or organization already exists',
+            HttpStatus.CONFLICT,
+          );
+        }
+        throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+      }
+
+      if (!user) {
+        throw new HttpException(
+          'Failed to create user',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Generate Refresh Token
+      const refreshToken = randomBytes(32).toString('hex');
+      const refreshTokenHash = await hash(refreshToken, 12);
+      const refreshTokenExpiresAt = new Date();
+      refreshTokenExpiresAt.setDate(refreshTokenExpiresAt.getDate() + 30);
+
+      const { error: refreshTokenError } = await client
+        .from(Tables.RefreshTokensTable)
+        .upsert(
+          {
+            user_id: user.id,
+            token: refreshTokenHash,
+            expires_at: refreshTokenExpiresAt.toISOString(),
+          },
+          { onConflict: 'user_id' },
+        );
+
+      if (refreshTokenError) {
+        console.error(refreshTokenError);
+        // We still created the user, but failed to log them in automatically
+        // Maybe just return user and let them log in manually?
+        // No, let's treat it as an error to be consistent with login flow
+        throw new HttpException(
+          'User created but failed to generate session. Please login.',
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+
+      // Generate JWT access token
+      const accessToken = this.jwtService.sign({
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organization_id || null,
+      });
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.full_name || user.name || user.email,
+        role: user.role,
+        organizationId: user.organization_id || null,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      };
+    } catch (error) {
+      console.error(error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Internal Server Error',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

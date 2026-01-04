@@ -44,8 +44,26 @@ export enum Tables {
   RFQPartsTable = 'rfq_parts',
 
   RFQPartDrawing2DTable = 'part_drawing_2d',
+
   AbandonedRFQPartsTable = 'abandoned_rfq_parts',
+
   AbandonedPartDrawing2DTable = 'abandoned_part_drawing_2d',
+
+  ShippingAddressTable = 'shipping_addresses',
+
+  OrdersTable = 'orders',
+
+  OrderPartsTable = 'order_parts',
+
+  OrderPartStatusHistoryTable = 'order_part_status_history',
+
+  OrderShippingTable = 'order_shipping',
+
+  OrderPaymentsTable = 'order_payments',
+
+  organizationAgreementsTable = 'organization_agreements',
+
+  OrderDocumentsTable = 'order_documents',
 }
 
 /**
@@ -67,11 +85,20 @@ export enum MaterializedViewNames {
 }
 
 export enum SQLFunctions {
+  createUser = 'create_user',
   userPermissionCodesMVRefresh = 'refresh_user_permission_codes_mv',
+
   createInitialRFQ = 'create_initial_rfq',
   abandonRFQPart = 'abandon_rfq_part',
   abandonRFQParts = 'abandon_rfq_parts',
   getUserRFQsWithPartsCount = 'get_user_rfqs_with_parts_count',
+
+  createOrder = 'create_order',
+  markOrderPaid = 'mark_order_paid',
+  getOrders = 'get_orders',
+  getOrderDetails = 'get_order_details',
+  updateOrderStatus = 'update_order_status',
+  updateOrderPartStatus = 'update_order_part_status',
 }
 
 /**

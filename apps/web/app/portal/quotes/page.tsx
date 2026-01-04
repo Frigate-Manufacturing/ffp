@@ -22,6 +22,7 @@ interface Quote {
   user_id: string;
   final_price: number | null;
   status: IRFQStatuses;
+  order_id: string | null;
   created_at: string;
   updated_at: string;
   parts_count: number;
@@ -113,6 +114,9 @@ export default function QuotesListPage() {
     draft: { label: "Draft", variant: "warning" },
     rejected: { label: "Rejected", variant: "destructive" },
     pending: { label: "Pending", variant: "warning" },
+    submitted: { label: "Submitted", variant: "default" },
+    "payment pending": { label: "Payment Pending", variant: "warning" },
+    paid: { label: "Paid", variant: "success" },
   };
 
   const getStatusChip = (status: IRFQStatuses) => {
@@ -144,7 +148,13 @@ export default function QuotesListPage() {
       header: "RFQ Code",
       render: (row) => (
         <Link
-          href={`/quote-config/${row.id}`}
+          href={
+            row.status === "draft"
+              ? `/quote-config/${row.id}`
+              : row.status === "paid"
+                ? `/portal/orders/${row.order_id}`
+                : `/checkout/${row.id}`
+          }
           className="text-blue-600 hover:text-blue-800 underline"
         >
           {row.rfq_code}

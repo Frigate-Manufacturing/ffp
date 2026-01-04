@@ -8,6 +8,24 @@ export class AuthDto {
   @IsString()
   password: string;
 }
+export class RegisterDto {
+  @IsString()
+  email: string;
+
+  @IsString()
+  password: string;
+
+  @IsString()
+  organization_name: string;
+
+  @IsString()
+  name: string;
+
+  @IsString()
+  phone: string;
+
+  referralSource?: string;
+}
 
 export class RefreshTokenDto {
   @IsString()

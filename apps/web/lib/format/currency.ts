@@ -9,13 +9,44 @@
  * @param currency - The currency code (default: 'USD')
  * @returns Formatted currency string (e.g., "$1,234.56")
  */
-export function formatCurrency(value: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
+export function formatCurrency(
+  value: number,
+  currency: string = "USD",
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
     currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+}
+
+type FormatCurrencyOptions = {
+  currency?: string; // default: "USD"
+  locale?: string; // default: "en-US"
+  minimumFractionDigits?: number; // default: 2
+  maximumFractionDigits?: number; // default: 2
+};
+
+export function formatCurrencyGeneric(
+  amount: number | string | null | undefined,
+  {
+    currency = "USD",
+    locale = "en-US",
+    minimumFractionDigits = 2,
+    maximumFractionDigits = 2,
+  }: FormatCurrencyOptions = {},
+): string {
+  if (amount === null || amount === undefined || isNaN(Number(amount))) {
+    return "—";
+  }
+
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits,
+    maximumFractionDigits,
+  }).format(Number(amount));
 }
 
 /**
@@ -24,11 +55,14 @@ export function formatCurrency(value: number, currency: string = 'USD'): string 
  * @param currency - The currency code (default: 'USD')
  * @returns Compact currency string
  */
-export function formatCurrencyCompact(value: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
+export function formatCurrencyCompact(
+  value: number,
+  currency: string = "USD",
+): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
     currency,
-    notation: 'compact',
+    notation: "compact",
     maximumFractionDigits: 1,
   }).format(value);
 }
@@ -39,7 +73,7 @@ export function formatCurrencyCompact(value: number, currency: string = 'USD'): 
  * @returns Formatted number string (e.g., "1,234.56")
  */
 export function formatCurrencyValue(value: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
