@@ -9,36 +9,6 @@ export enum MetaNames {
 }
 
 /**
- * Database table names used throughout the application
- */
-export enum Tables {
-  /** Table storing user account information */
-  UserTable = "users",
-  /** Table storing organization details */
-  OrganizationTable = "organizations",
-  /** Table storing role definitions */
-  RolesTable = "roles",
-  /** Table storing permission definitions */
-  PermissionsTable = "permissions",
-  /** Junction table linking organizations with their general roles */
-  GeneralOrganizationRolesTable = "general_organization_roles",
-  /** Junction table linking roles with their permissions */
-  RolePermissionsTable = "role_permissions",
-  /** Table storing refresh tokens for authentication */
-  RefreshTokensTable = "refresh_tokens",
-
-  GeneralMaterialsTable = "general_materials",
-
-  MaterialCategories = "material_categories",
-
-  SupplierMaterials = "supplier_materials",
-
-  Warehouses = "warehouses",
-
-  MaterialTable = "material",
-}
-
-/**
  * Enum representing different types of stock materials
  */
 
@@ -176,3 +146,47 @@ export const leadTypeStyles = {
     text: "text-purple-700",
   },
 } as const;
+
+export const metalTranslation = {
+  "aluminum-6061": "Aluminum 6061",
+  "aluminum-6063": "Aluminum 6063",
+  "aluminum-5052": "Aluminum 5052",
+  "aluminum-7075": "Aluminum 7075",
+  "aluminum-2024": "Aluminum 2024",
+
+  "carbon-steel-a36": "Carbon Steel A36",
+  "carbon-steel-1018": "Carbon Steel 1018",
+  "carbon-steel-1045": "Carbon Steel 1045",
+  "alloy-steel-4140": "Alloy Steel 4140",
+  "alloy-steel-4340": "Alloy Steel 4340",
+
+  "stainless-steel-304": "Stainless Steel 304",
+  "stainless-steel-316": "Stainless Steel 316",
+  "stainless-steel-321": "Stainless Steel 321",
+  "stainless-steel-410": "Stainless Steel 410",
+  "stainless-steel-430": "Stainless Steel 430",
+
+  "brass-c360": "Brass C360",
+  "brass-c260": "Brass C260",
+
+  "copper-c110": "Copper C110",
+  "copper-c101": "Copper C101",
+
+  "titanium-grade-2": "Titanium Grade 2",
+  "titanium-grade-5": "Titanium Grade 5 (Ti-6Al-4V)",
+
+  abs: "ABS",
+  "nylon-6": "Nylon 6",
+  "nylon-6-6": "Nylon 6/6",
+  polycarbonate: "Polycarbonate",
+  "delrin-acetal": "Delrin (Acetal)",
+  peek: "PEEK",
+  hdpe: "HDPE",
+  uhmw: "UHMW",
+
+  "inconel-625": "Inconel 625",
+  "inconel-718": "Inconel 718",
+  "monel-400": "Monel 400",
+  "tool-steel-d2": "Tool Steel D2",
+  "tool-steel-h13": "Tool Steel H13",
+};

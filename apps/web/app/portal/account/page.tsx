@@ -7,30 +7,23 @@ import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   UserIcon,
   BuildingOfficeIcon,
-  UsersIcon,
-  KeyIcon,
-  BellIcon,
-  DocumentTextIcon,
+  MapPinIcon,
 } from "@heroicons/react/24/outline";
-import type { UserProfile, Organization, Member } from "@/types/order";
 import { trackEvent } from "@/lib/analytics/posthog";
-
-const ITEMS_PER_PAGE = 25;
+import { Trash2 } from "lucide-react";
 
 export default function AccountPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(true);
-  const [_profile, setProfile] = useState<UserProfile | null>(null);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [_members, setMembers] = useState<Member[]>([]);
-  const [membersTotal, setMembersTotal] = useState(0);
+  const [profile, setProfile] = useState<any | null>(null);
+  const [organization, setOrganization] = useState<any | null>(null);
+  const [addresses, setAddresses] = useState<any[]>([]);
 
   // Determine active tab from pathname
   useEffect(() => {
@@ -39,16 +32,7 @@ export default function AccountPage() {
 
     if (lastSegment === "account") {
       setActiveTab("profile");
-    } else if (
-      [
-        "profile",
-        "organization",
-        "team",
-        "api-tokens",
-        "notifications",
-        "templates",
-      ].includes(lastSegment)
-    ) {
+    } else if (["profile", "organization", "shipping"].includes(lastSegment)) {
       setActiveTab(lastSegment);
     }
   }, [pathname]);
@@ -62,29 +46,40 @@ export default function AccountPage() {
     try {
       setLoading(true);
 
-      const [profileRes, orgRes, membersRes] = await Promise.all([
-        api.get<UserProfile>("/auth/profile"),
-        api.get<Organization>("/org/current"),
-        api.get<{ members: Member[]; total: number }>(
-          `/org/members?limit=${ITEMS_PER_PAGE}`,
-        ),
+      const [profileRes, orgRes, addressRes] = await Promise.all([
+        api.get("/auth/profile"),
+        api.get("/org/current"),
+        api.get("/orders/shipping_address"),
       ]);
 
       setProfile(profileRes.data);
       setOrganization(orgRes.data);
-      setMembers(membersRes.data.members);
-      setMembersTotal(membersRes.data.total);
+      if (addressRes.data && addressRes.data.data) {
+        setAddresses(addressRes.data.data);
+      }
 
       trackEvent("account_home_view", {
         has_profile: !!profileRes.data,
         has_org: !!orgRes.data,
-        member_count: membersRes.data.total,
       });
     } catch (error: any) {
       console.error("Error loading account data:", error);
       toast.error("Failed to load account data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteAddress = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this address?")) return;
+
+    try {
+      await api.delete(`/orders/shipping_address/${id}`);
+      setAddresses(addresses.filter((a) => a.id !== id));
+      toast.success("Address deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete address:", error);
+      toast.error("Failed to delete address");
     }
   };
 
@@ -99,14 +94,8 @@ export default function AccountPage() {
         return <UserIcon className="w-4 h-4" />;
       case "organization":
         return <BuildingOfficeIcon className="w-4 h-4" />;
-      case "team":
-        return <UsersIcon className="w-4 h-4" />;
-      case "api-tokens":
-        return <KeyIcon className="w-4 h-4" />;
-      case "notifications":
-        return <BellIcon className="w-4 h-4" />;
-      case "templates":
-        return <DocumentTextIcon className="w-4 h-4" />;
+      case "shipping":
+        return <MapPinIcon className="w-4 h-4" />;
       default:
         return null;
     }
@@ -154,7 +143,24 @@ export default function AccountPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">User</p>
+                  <p className="text-xl font-bold text-gray-900 truncate">
+                    {profile?.name || "Loading..."}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {profile?.email}
+                  </p>
+                </div>
+                <UserIcon className="w-8 h-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -162,11 +168,11 @@ export default function AccountPage() {
                   <p className="text-sm font-medium text-gray-600">
                     Organization
                   </p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-xl font-bold text-gray-900 truncate">
                     {organization?.name || "Not set"}
                   </p>
                 </div>
-                <BuildingOfficeIcon className="w-8 h-8 text-blue-600" />
+                <BuildingOfficeIcon className="w-8 h-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -175,67 +181,12 @@ export default function AccountPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Team Members
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {membersTotal}
+                  <p className="text-sm font-medium text-gray-600">Addresses</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    {addresses.length}
                   </p>
                 </div>
-                <UsersIcon className="w-8 h-8 text-green-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Default Currency
-                  </p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {organization?.default_currency || "USD"}
-                  </p>
-                </div>
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-purple-600 font-bold text-sm">
-                    {organization?.default_currency?.[0] || "$"}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">
-                    Compliance Mode
-                  </p>
-                  <div className="flex gap-2 mt-1">
-                    {organization?.itar_mode && (
-                      <Badge variant="destructive" className="text-xs">
-                        ITAR
-                      </Badge>
-                    )}
-                    {organization?.onshore_only && (
-                      <Badge variant="secondary" className="text-xs">
-                        Onshore
-                      </Badge>
-                    )}
-                    {!organization?.itar_mode &&
-                      !organization?.onshore_only && (
-                        <Badge variant="outline" className="text-xs">
-                          Standard
-                        </Badge>
-                      )}
-                  </div>
-                </div>
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <span className="text-orange-600 font-bold text-sm">!</span>
-                </div>
+                <MapPinIcon className="w-8 h-8 text-purple-600" />
               </div>
             </CardContent>
           </Card>
@@ -243,7 +194,7 @@ export default function AccountPage() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               {getTabIcon("profile")}
               Profile
@@ -255,24 +206,9 @@ export default function AccountPage() {
               {getTabIcon("organization")}
               Organization
             </TabsTrigger>
-            <TabsTrigger value="team" className="flex items-center gap-2">
-              {getTabIcon("team")}
-              Team & Roles
-            </TabsTrigger>
-            <TabsTrigger value="api-tokens" className="flex items-center gap-2">
-              {getTabIcon("api-tokens")}
-              API Tokens
-            </TabsTrigger>
-            <TabsTrigger
-              value="notifications"
-              className="flex items-center gap-2"
-            >
-              {getTabIcon("notifications")}
-              Notifications
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="flex items-center gap-2">
-              {getTabIcon("templates")}
-              Templates
+            <TabsTrigger value="shipping" className="flex items-center gap-2">
+              {getTabIcon("shipping")}
+              Shipping Info
             </TabsTrigger>
           </TabsList>
 
@@ -282,15 +218,18 @@ export default function AccountPage() {
                 <CardTitle>Profile Settings</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">
-                  Configure your personal profile and authentication settings.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => router.push("/portal/account/profile")}
-                >
-                  Manage Profile
-                </Button>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm text-gray-500">Full Name</p>
+                      <p className="font-medium">{profile?.name || "-"}</p>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm text-gray-500">Email</p>
+                      <p className="font-medium">{profile?.email || "-"}</p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -301,92 +240,63 @@ export default function AccountPage() {
                 <CardTitle>Organization Settings</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">
-                  Manage your organization's details, defaults, and compliance
-                  settings.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => router.push("/portal/account/organization")}
-                >
-                  Manage Organization
-                </Button>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <p className="text-sm text-gray-500">Organization Name</p>
+                      <p className="font-medium">{organization?.name || "-"}</p>
+                    </div>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="team" className="mt-6">
+          <TabsContent value="shipping" className="mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Team Management</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Shipping Addresses</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-600">
-                  Invite team members and manage roles and permissions.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => router.push("/portal/account/team")}
-                >
-                  Manage Team
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="api-tokens" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>API Tokens</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Create and manage API tokens for programmatic access.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => router.push("/portal/account/api-tokens")}
-                >
-                  Manage API Tokens
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="notifications" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Email Notifications</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Configure your email notification preferences.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => router.push("/portal/account/notifications")}
-                >
-                  Manage Notifications
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="templates" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Saved Templates</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">
-                  Manage your saved material, finish, and inspection templates.
-                </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => router.push("/portal/account/templates")}
-                >
-                  Manage Templates
-                </Button>
+                {addresses.length === 0 ? (
+                  <p className="text-gray-500">No shipping addresses found.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {addresses.map((addr: any) => (
+                      <div
+                        key={addr.id}
+                        className="flex justify-between items-start p-4 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div>
+                          <p className="font-bold">{addr.name}</p>
+                          <p className="text-sm text-gray-600">
+                            {[
+                              addr.street1,
+                              addr.street2,
+                              addr.city,
+                              addr.state,
+                              addr.zip,
+                              addr.country,
+                            ]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {addr.phone} {addr.email && `• ${addr.email}`}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteAddress(addr.id)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

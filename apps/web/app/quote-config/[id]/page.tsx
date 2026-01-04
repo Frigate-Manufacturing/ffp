@@ -136,7 +136,7 @@ export const calculateLeadTime = (
 
 const calculatePrice = (
   part: PartConfig,
-  tier: "economy" | "standard" | "expedited" = "economy",
+  tier: "economy" | "standard" | "expedited" = "standard",
 ): number => {
   if (!part.geometry) return 0;
 
@@ -214,7 +214,7 @@ export default function QuoteConfigPage() {
             cad_file_type: file.type,
             material: "aluminum-6061",
             quantity: 1,
-            status: "active",
+            status: "draft",
             tolerance: "standard",
             finish: "as-machined",
             threads: "none",
@@ -228,6 +228,7 @@ export default function QuoteConfigPage() {
             certificates: [],
           };
           newPart.final_price = calculatePrice(newPart);
+
           newPart.lead_time = calculateLeadTime(newPart, "standard");
           newParts.push(newPart);
         }
@@ -736,6 +737,7 @@ export default function QuoteConfigPage() {
 
   const handleSaveDraft = async (
     message: string = "Draft saved successfully",
+    status: string = "draft",
   ) => {
     if (unsavedChanges.size === 0) {
       notify.info("No changes to save");
@@ -756,7 +758,10 @@ export default function QuoteConfigPage() {
           };
           await apiClient.patch(`/rfq/${rfq.id}/parts/${part.id}`, payload);
         }),
-        apiClient.patch(`/rfq/${rfq.id}`, { final_price: standardPrice }),
+        apiClient.patch(`/rfq/${rfq.id}`, {
+          final_price: standardPrice,
+          status: status,
+        }),
       ]);
 
       setUnsavedChanges(new Set());
@@ -774,7 +779,7 @@ export default function QuoteConfigPage() {
       setSaving(true);
       // Ensure all changes are saved before checkout logic if needed
       if (unsavedChanges.size > 0) {
-        await handleSaveDraft("Quote changes saved successfully");
+        await handleSaveDraft("Quote changes saved successfully", "submitted");
       }
 
       if (standardPrice < 150) {
@@ -839,6 +844,12 @@ export default function QuoteConfigPage() {
 
   if (session.status === "unauthenticated") {
     router.push("/signin");
+    return null;
+  }
+
+  if (rfq && rfq.status == "paid") {
+    notify.error("This quote has already been paid");
+    router.push("/portal/orders");
     return null;
   }
 
@@ -1172,6 +1183,7 @@ export default function QuoteConfigPage() {
               {/* Mini Breakdown */}
               <div className="space-y-3 max-h-[calc(100vh-85px)] overflow-y-auto custom-scrollbar pr-1">
                 {parts.map((p, i) => {
+                  console.log(p, "p");
                   const pPrice = p.final_price || 0;
                   const calculatedLeadTime = p.leadTime || 0;
                   return (

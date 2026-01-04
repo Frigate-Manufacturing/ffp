@@ -15,6 +15,7 @@ SELECT r.id,
     r.status,
     r.created_at,
     r.updated_at,
+    r.order_id,
     COUNT(p.id) AS parts_count
 FROM rfq r
     LEFT JOIN rfq_parts p ON p.rfq_id = r.id

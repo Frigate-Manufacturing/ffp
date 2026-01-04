@@ -12,6 +12,9 @@ import { ToleranceModule } from './tolerance/tolerance.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { FilesModule } from './files/files.module';
 import { RfqModule } from './rfq/rfq.module';
+import { OrdersModule } from './orders/orders.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { OrgModule } from './org/org.module';
 
 @Module({
   imports: [
@@ -32,6 +35,9 @@ import { RfqModule } from './rfq/rfq.module';
     ToleranceModule,
     FilesModule,
     RfqModule,
+    OrdersModule,
+    DashboardModule,
+    OrgModule,
   ],
   controllers: [AppController],
   providers: [AppService],

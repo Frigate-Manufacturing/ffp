@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS organizations { id uuid PRIMARY KEY DEFAULT gen_rando
 name VARCHAR(255) UNIQUE NOT NULL,
 diplay_name VARCHAR(255),
 address TEXT,
+organization_type TEXT NOT NULL DEFAULT 'customer',
 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP };
 -- --
@@ -34,4 +35,14 @@ CREATE table IF NOT EXISTS refresh_tokens (
     created_at timestamp default now(),
     expires_at timestamp,
     updated_at timestamp default now()
-)
+) CREATE TABLE IF NOT EXISTS referral_sources (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (user_id)
+);
+-- Fast lookup by user
+CREATE INDEX IF NOT EXISTS idx_referral_sources_user_id ON referral_sources(user_id);
+-- Optional: if you query by source (analytics / reporting)
+CREATE INDEX IF NOT EXISTS idx_referral_sources_source ON referral_sources(source);

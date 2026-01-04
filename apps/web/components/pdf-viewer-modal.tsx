@@ -1,20 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  X,
-  ZoomIn,
-  ZoomOut,
-  Download,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Loader2,
-} from "lucide-react";
+import { X, ZoomIn, ZoomOut, Download, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
+import { cn } from "@/lib/utils";
 
 // Configure PDF.js worker only in browser environment
 if (typeof window !== "undefined") {
@@ -26,6 +18,7 @@ interface PdfViewerModalProps {
   onClose: () => void;
   pdfSrc: string;
   fileName?: string;
+  variant?: "dark" | "glass";
 }
 
 export function PdfViewerModal({
@@ -33,16 +26,15 @@ export function PdfViewerModal({
   onClose,
   pdfSrc,
   fileName = "Document",
+  variant = "glass",
 }: PdfViewerModalProps) {
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [isLoading, setIsLoading] = useState(true);
 
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setPageNumber(1);
       setScale(1.0);
       setIsLoading(true);
       document.body.style.overflow = "hidden";
@@ -89,14 +81,6 @@ export function PdfViewerModal({
     }
   };
 
-  const goToPrevPage = () => {
-    setPageNumber((prev) => Math.max(prev - 1, 1));
-  };
-
-  const goToNextPage = () => {
-    setPageNumber((prev) => Math.min(prev + 1, numPages));
-  };
-
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
     setIsLoading(false);
@@ -107,9 +91,16 @@ export function PdfViewerModal({
     setIsLoading(false);
   };
 
+  const isGlass = variant === "glass";
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-black/95 backdrop-blur-sm animate-in fade-in duration-200"
+      className={cn(
+        "fixed inset-0 z-[100] flex flex-col animate-in fade-in duration-300",
+        isGlass
+          ? "bg-slate-900/40 backdrop-blur-2xl"
+          : "bg-black/95 backdrop-blur-sm",
+      )}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -117,13 +108,32 @@ export function PdfViewerModal({
       }}
     >
       {/* Top Toolbar */}
-      <div className="flex-shrink-0 p-4 flex justify-between items-center border-b border-white/10">
+      <div
+        className={cn(
+          "flex-shrink-0 p-4 flex justify-between items-center border-b transition-colors",
+          isGlass
+            ? "bg-white/10 border-white/20 backdrop-blur-md"
+            : "bg-black/40 border-white/10",
+        )}
+      >
         <div className="flex items-center gap-3 text-white/90 text-sm font-medium">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <FileText className="w-5 h-5 text-blue-400" />
+          <div
+            className={cn(
+              "p-2 rounded-lg shadow-inner",
+              isGlass ? "bg-white/20" : "bg-blue-500/20",
+            )}
+          >
+            <FileText
+              className={cn(
+                "w-5 h-5",
+                isGlass ? "text-white" : "text-blue-400",
+              )}
+            />
           </div>
           <div>
-            <p className="font-semibold">{fileName}</p>
+            <p className="font-semibold text-white tracking-tight">
+              {fileName}
+            </p>
             <p className="text-xs text-white/60">
               {numPages > 0 ? `${numPages} pages` : "PDF Document"}
             </p>
@@ -134,7 +144,7 @@ export function PdfViewerModal({
             variant="ghost"
             size="icon"
             onClick={handleDownload}
-            className="text-white hover:bg-white/10 rounded-lg h-10 w-10"
+            className="text-white hover:bg-white/10 rounded-lg h-10 w-10 transition-all hover:scale-105"
             title="Download PDF"
           >
             <Download className="w-5 h-5" />
@@ -144,7 +154,7 @@ export function PdfViewerModal({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="text-white hover:bg-red-500/80 hover:text-white rounded-lg h-10 w-10"
+            className="text-white hover:bg-rose-500/80 hover:text-white rounded-lg h-10 w-10 transition-all active:scale-90"
             title="Close (ESC)"
           >
             <X className="w-5 h-5" />
@@ -153,11 +163,21 @@ export function PdfViewerModal({
       </div>
 
       {/* Main PDF Container */}
-      <div className="flex-1 overflow-auto bg-slate-900 p-4 flex items-center justify-center">
+      <div
+        className={cn(
+          "flex-1 overflow-auto p-8 flex flex-col items-center gap-10 scroll-smooth custom-scrollbar",
+          isGlass ? "bg-transparent" : "bg-slate-900/50",
+        )}
+      >
         {isLoading && (
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
-            <p className="text-white/60 text-sm">Loading PDF...</p>
+          <div className="flex flex-col items-center gap-4 py-24 animate-pulse">
+            <div className="relative">
+              <div className="absolute inset-0 blur-xl bg-blue-500/40 animate-pulse rounded-full" />
+              <Loader2 className="w-10 h-10 text-white animate-spin relative" />
+            </div>
+            <p className="text-white/70 text-sm font-medium tracking-wide">
+              Synthesizing Document...
+            </p>
           </div>
         )}
         <Document
@@ -165,34 +185,75 @@ export function PdfViewerModal({
           onLoadSuccess={onDocumentLoadSuccess}
           onLoadError={onDocumentLoadError}
           loading={null}
-          className="flex items-center justify-center"
+          className="flex flex-col items-center gap-12"
         >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            className="shadow-2xl bg-white"
-            loading={
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
+          {Array.from(new Array(numPages), (el, index) => (
+            <div
+              key={`page_container_${index + 1}`}
+              className={cn(
+                "relative group transition-all duration-500",
+                isGlass ? "hover:scale-[1.01]" : "",
+              )}
+            >
+              {/* Decorative backglow for glass effect */}
+              {isGlass && (
+                <div className="absolute -inset-4 bg-white/5 blur-3xl rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 -z-10" />
+              )}
+
+              <Page
+                pageNumber={index + 1}
+                scale={scale}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                className={cn(
+                  "shadow-2xl transition-all duration-300",
+                  isGlass
+                    ? "rounded-md ring-1 ring-white/20 bg-white"
+                    : "bg-white",
+                )}
+                loading={
+                  <div
+                    className={cn(
+                      "flex items-center justify-center p-32 rounded-lg border min-w-[600px] animate-pulse",
+                      isGlass
+                        ? "bg-white/5 border-white/10"
+                        : "bg-white/5 border-white/5",
+                    )}
+                  >
+                    <Loader2 className="w-8 h-8 text-white/20 animate-spin" />
+                  </div>
+                }
+              />
+
+              {/* Page indicator for scroll view */}
+              <div className="absolute -left-16 top-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <span className="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-1 rounded border border-white/10 backdrop-blur-sm">
+                  P. {index + 1}
+                </span>
               </div>
-            }
-          />
+            </div>
+          ))}
         </Document>
       </div>
 
       {/* Bottom Controls Bar */}
-      <div className="flex-shrink-0 p-4 border-t border-white/10">
-        <div className="max-w-2xl mx-auto bg-black/60 backdrop-blur-xl border border-white/10 rounded-full px-6 py-3 flex items-center justify-between gap-4 shadow-2xl">
+      <div className="flex-shrink-0 p-6">
+        <div
+          className={cn(
+            "max-w-fit mx-auto backdrop-blur-2xl border flex items-center justify-between gap-1 shadow-2xl px-2 py-1.5 transition-all duration-500",
+            isGlass
+              ? "bg-white/10 border-white/30 rounded-2xl"
+              : "bg-black/60 border-white/10 rounded-full",
+          )}
+        >
           {/* Zoom Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={handleZoomOut}
               disabled={scale <= 0.5}
-              className="text-white/90 hover:bg-white/20 hover:text-white rounded-full h-9 w-9 disabled:opacity-30"
+              className="text-white/80 hover:bg-white/20 hover:text-white rounded-xl h-9 w-9 disabled:opacity-20 transition-colors"
               title="Zoom Out"
             >
               <ZoomOut className="w-4 h-4" />
@@ -201,7 +262,7 @@ export function PdfViewerModal({
             <Button
               variant="ghost"
               onClick={handleResetZoom}
-              className="text-white/60 hover:text-white hover:bg-white/10 text-xs font-mono min-w-[70px] h-9 rounded-full px-3"
+              className="text-white/70 hover:text-white hover:bg-white/10 text-[11px] font-bold min-w-[64px] h-9 rounded-xl px-2 tracking-tighter transition-colors"
               title="Reset Zoom"
             >
               {Math.round(scale * 100)}%
@@ -212,48 +273,30 @@ export function PdfViewerModal({
               size="icon"
               onClick={handleZoomIn}
               disabled={scale >= 3.0}
-              className="text-white/90 hover:bg-white/20 hover:text-white rounded-full h-9 w-9 disabled:opacity-30"
+              className="text-white/80 hover:bg-white/20 hover:text-white rounded-xl h-9 w-9 disabled:opacity-20 transition-colors"
               title="Zoom In"
             >
               <ZoomIn className="w-4 h-4" />
             </Button>
           </div>
-
-          {/* Page Navigation */}
-          {numPages > 1 && (
-            <>
-              <div className="w-px h-5 bg-white/20" />
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToPrevPage}
-                  disabled={pageNumber <= 1}
-                  className="text-white/90 hover:bg-white/20 hover:text-white rounded-full h-9 w-9 disabled:opacity-30"
-                  title="Previous Page"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-
-                <span className="text-white/80 text-sm font-medium min-w-[80px] text-center">
-                  Page {pageNumber} / {numPages}
-                </span>
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToNextPage}
-                  disabled={pageNumber >= numPages}
-                  className="text-white/90 hover:bg-white/20 hover:text-white rounded-full h-9 w-9 disabled:opacity-30"
-                  title="Next Page"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </>
-          )}
         </div>
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+      `}</style>
     </div>
   );
 }

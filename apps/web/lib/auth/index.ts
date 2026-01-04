@@ -1,5 +1,6 @@
 import { getServerSession, NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { NextResponse } from "next/server";
 
 async function refreshAccessToken(token: any) {
   try {
@@ -189,10 +190,47 @@ const authOptions: NextAuthOptions = {
 const getSession = () => getServerSession(authOptions);
 
 const AuthService = {
-  login: async (_email: string, _pass: string) => null as any,
-  register: async (_data: any) => null as any,
+  login: async (email: string, pass: string) => {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password: pass }),
+    });
+    if (!res.ok) throw new Error("Invalid credentials");
+    return res.json();
+  },
+  register: async (data: any) => {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.message || "Registration failed");
+    }
+    const result = await res.json();
+    return {
+      user: result,
+      token: result.accessToken,
+    };
+  },
 };
-const createAuthResponse = (_user: any, _token: string) => ({});
-const getUser = async () => null;
+
+const createAuthResponse = (user: any, token: string) => {
+  return NextResponse.json(user, {
+    headers: {
+      "Set-Cookie": `next-auth.session-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${30 * 24 * 60 * 60}`,
+    },
+  });
+};
+
+const getUser = async () => {
+  const session = await getSession();
+  return session?.user;
+};
 
 export { authOptions, getSession, AuthService, createAuthResponse, getUser };

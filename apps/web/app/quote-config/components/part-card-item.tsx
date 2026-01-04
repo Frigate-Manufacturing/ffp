@@ -48,7 +48,6 @@ import {
 } from "@/types/part-config";
 import { apiClient } from "@/lib/api";
 import FileManagementModal from "./file-management-modal";
-import LeadTypeCard from "./lead-type-card";
 import { formatCurrencyFixed } from "@/lib/utils";
 import { leadTimeMeta, markupMap } from "@cnc-quote/shared";
 

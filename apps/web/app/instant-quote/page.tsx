@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Upload,
@@ -18,12 +19,15 @@ import {
   X,
   Loader2,
   Eye,
+  EyeOff,
   ArrowRight,
   User,
   Settings,
   Layers,
   Box,
   LogOut,
+  Building2,
+  Phone,
 } from "lucide-react";
 import { analyzeCADFile, GeometryData } from "../../lib/cad-analysis";
 import { PricingBreakdown } from "../../lib/pricing-engine";
@@ -69,13 +73,17 @@ export default function InstantQuotePage() {
   );
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [redirectUrl, _] = useState<string>("");
   const [authForm, setAuthForm] = useState({
-    email: "",
-    password: "",
     name: "",
-    company: "",
+    email: "",
+    phone_number: "",
+    password: "",
+    organization_name: "",
+    agreeToTerms: false,
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const session = useSession();
   const { upload } = useFileUpload();
@@ -206,27 +214,115 @@ export default function InstantQuotePage() {
     }
   };
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsAuthLoading(true);
+  const validateEmail = (email: string) => {
+    if (!email) return "Email is required";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return "Please enter a valid email address";
+    return "";
+  };
 
-    if (authMode === "signin") {
-      const respone = await signIn("credentials", {
-        email: authForm.email,
-        password: authForm.password,
-        redirect: false,
-      });
+  const validatePassword = (password: string) => {
+    if (!password) return "Password is required";
+    if (password.length < 6) return "Password must be at least 6 characters";
+    return "";
+  };
 
-      if (respone?.error) {
-        notify.error("Error while signing in");
-        return;
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (authMode === "signup") {
+      if (!authForm.name) newErrors.name = "Full name is required";
+      if (!authForm.organization_name)
+        newErrors.organization_name = "Organization name is required";
+      if (!authForm.phone_number)
+        newErrors.phone_number = "Phone number is required";
+
+      if (!authForm.agreeToTerms) {
+        newErrors.agreeToTerms = "You must agree to the terms";
       }
     }
 
-    setShowAuthModal(false);
-    setIsAuthLoading(false);
-    if (redirectUrl) {
-      router.push(redirectUrl);
+    const emailError = validateEmail(authForm.email);
+    if (emailError) newErrors.email = emailError;
+
+    const passwordError = validatePassword(authForm.password);
+    if (passwordError) newErrors.password = passwordError;
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isAuthLoading) return;
+
+    if (!validateForm()) return;
+
+    setIsAuthLoading(true);
+
+    try {
+      if (authMode === "signin") {
+        const response = await signIn("credentials", {
+          email: authForm.email,
+          password: authForm.password,
+          redirect: false,
+        });
+
+        if (response?.error) {
+          notify.error("Error while signing in");
+          setIsAuthLoading(false);
+          return;
+        }
+      } else {
+        // Signup Flow
+        const apiPayload = {
+          email: authForm.email,
+          password: authForm.password,
+          organization_name: authForm.organization_name,
+          name: authForm.name,
+          phone: authForm.phone_number,
+        };
+
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          body: JSON.stringify(apiPayload),
+          headers: { "Content-Type": "application/json" },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || data.error || "Registration failed");
+        }
+
+        notify.success("Account created successfully!");
+
+        // Auto login
+        const result = await signIn("credentials", {
+          email: authForm.email,
+          password: authForm.password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          notify.error(
+            "Account created, but automatic sign-in failed. Please sign in manually.",
+          );
+          setAuthMode("signin");
+          setIsAuthLoading(false);
+          return;
+        }
+      }
+
+      setShowAuthModal(false);
+      setIsAuthLoading(false);
+      if (redirectUrl) {
+        router.push(redirectUrl);
+      }
+    } catch (err: any) {
+      console.error(err);
+      notify.error(err.message || "Authentication failed");
+      setIsAuthLoading(false);
     }
   };
 
@@ -739,11 +835,13 @@ export default function InstantQuotePage() {
             </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleAuth} className="space-y-4 mt-4">
+          <form onSubmit={handleAuth} className="space-y-4 mt-4" noValidate>
             {authMode === "signup" && (
-              <div className="grid grid-cols-2 gap-4">
+              <>
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name" className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-slate-400" /> Full Name
+                  </Label>
                   <Input
                     id="name"
                     placeholder="John Doe"
@@ -751,30 +849,73 @@ export default function InstantQuotePage() {
                     onChange={(e) =>
                       setAuthForm((prev) => ({ ...prev, name: e.target.value }))
                     }
-                    className="bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                    required
+                    className={`bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 ${errors.name ? "border-red-500" : ""}`}
                   />
+                  {errors.name && (
+                    <p className="text-red-500 text-xs">{errors.name}</p>
+                  )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input
-                    id="company"
-                    placeholder="Acme Inc."
-                    value={authForm.company}
-                    onChange={(e) =>
-                      setAuthForm((prev) => ({
-                        ...prev,
-                        company: e.target.value,
-                      }))
-                    }
-                    className="bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="organization_name"
+                      className="flex items-center gap-2"
+                    >
+                      <Building2 className="w-4 h-4 text-slate-400" /> Org Name
+                    </Label>
+                    <Input
+                      id="organization_name"
+                      placeholder="Acme Inc."
+                      value={authForm.organization_name}
+                      onChange={(e) =>
+                        setAuthForm((prev) => ({
+                          ...prev,
+                          organization_name: e.target.value,
+                        }))
+                      }
+                      className={`bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 ${errors.organization_name ? "border-red-500" : ""}`}
+                    />
+                    {errors.organization_name && (
+                      <p className="text-red-500 text-xs">
+                        {errors.organization_name}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="phone_number"
+                      className="flex items-center gap-2"
+                    >
+                      <Phone className="w-4 h-4 text-slate-400" /> Phone
+                    </Label>
+                    <Input
+                      id="phone_number"
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      value={authForm.phone_number}
+                      onChange={(e) =>
+                        setAuthForm((prev) => ({
+                          ...prev,
+                          phone_number: e.target.value,
+                        }))
+                      }
+                      className={`bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 ${errors.phone_number ? "border-red-500" : ""}`}
+                    />
+                    {errors.phone_number && (
+                      <p className="text-red-500 text-xs">
+                        {errors.phone_number}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="flex items-center gap-2">
+                Email Address
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -783,25 +924,88 @@ export default function InstantQuotePage() {
                 onChange={(e) =>
                   setAuthForm((prev) => ({ ...prev, email: e.target.value }))
                 }
-                className="bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                required
+                className={`bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 ${errors.email ? "border-red-500" : ""}`}
               />
+              {errors.email && (
+                <p className="text-red-500 text-xs">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={authForm.password}
-                onChange={(e) =>
-                  setAuthForm((prev) => ({ ...prev, password: e.target.value }))
-                }
-                className="bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={authForm.password}
+                  onChange={(e) =>
+                    setAuthForm((prev) => ({
+                      ...prev,
+                      password: e.target.value,
+                    }))
+                  }
+                  className={`bg-slate-50 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20 pr-10 ${errors.password ? "border-red-500" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-red-500 text-xs">{errors.password}</p>
+              )}
             </div>
+
+            {authMode === "signup" && (
+              <div className="pt-2">
+                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                  <Checkbox
+                    id="terms"
+                    checked={authForm.agreeToTerms}
+                    onCheckedChange={(checked) =>
+                      setAuthForm((prev) => ({
+                        ...prev,
+                        agreeToTerms: Boolean(checked),
+                      }))
+                    }
+                    className="mt-1"
+                  />
+                  <label
+                    htmlFor="terms"
+                    className="text-xs text-slate-500 leading-relaxed cursor-pointer select-none"
+                  >
+                    By creating an account, you agree to our{" "}
+                    <Link
+                      href="/terms"
+                      className="text-blue-600 font-medium hover:underline"
+                    >
+                      Terms
+                    </Link>{" "}
+                    and{" "}
+                    <Link
+                      href="/privacy"
+                      className="text-blue-600 font-medium hover:underline"
+                    >
+                      Privacy Policy
+                    </Link>
+                    .
+                  </label>
+                </div>
+                {errors.agreeToTerms && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.agreeToTerms}
+                  </p>
+                )}
+              </div>
+            )}
 
             <Button
               type="submit"

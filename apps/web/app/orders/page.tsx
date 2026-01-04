@@ -1,63 +1,90 @@
-import CustomerLayout from '@/components/CustomerLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { CubeIcon, EyeIcon, TruckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import CustomerLayout from "@/components/CustomerLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  CubeIcon,
+  EyeIcon,
+  TruckIcon,
+  CheckCircleIcon,
+} from "@heroicons/react/24/outline";
+import { useEffect } from "react";
 
 export default function OrdersPage() {
   // Mock data for demonstration
   const orders = [
     {
-      id: 'ORD-001',
-      title: 'Aluminum CNC Part',
-      status: 'completed',
-      createdAt: '2024-01-15',
-      price: '$245.00',
-      description: 'Precision machined aluminum bracket for aerospace application'
+      id: "ORD-001",
+      title: "Aluminum CNC Part",
+      status: "completed",
+      createdAt: "2024-01-15",
+      price: "$245.00",
+      description:
+        "Precision machined aluminum bracket for aerospace application",
     },
     {
-      id: 'ORD-002',
-      title: 'Steel Gear Housing',
-      status: 'in-progress',
-      createdAt: '2024-01-12',
-      price: '$1,250.00',
-      description: 'Heavy-duty steel gear housing with complex internal features'
+      id: "ORD-002",
+      title: "Steel Gear Housing",
+      status: "in-progress",
+      createdAt: "2024-01-12",
+      price: "$1,250.00",
+      description:
+        "Heavy-duty steel gear housing with complex internal features",
     },
     {
-      id: 'ORD-003',
-      title: 'Plastic Prototype',
-      status: 'shipped',
-      createdAt: '2024-01-10',
-      price: '$89.50',
-      description: 'Rapid prototype for medical device component'
-    }
+      id: "ORD-003",
+      title: "Plastic Prototype",
+      status: "shipped",
+      createdAt: "2024-01-10",
+      price: "$89.50",
+      description: "Rapid prototype for medical device component",
+    },
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'in-progress':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "in-progress":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
+      case "shipped":
+        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return <CheckCircleIcon className="h-4 w-4" />;
-      case 'in-progress':
+      case "in-progress":
         return <CubeIcon className="h-4 w-4" />;
-      case 'shipped':
+      case "shipped":
         return <TruckIcon className="h-4 w-4" />;
       default:
         return <CubeIcon className="h-4 w-4" />;
     }
   };
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/orders");
+        const data = await response.json();
+        console.log(data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   return (
     <CustomerLayout>
@@ -65,8 +92,12 @@ export default function OrdersPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-black dark:text-white">My Orders</h1>
-            <p className="text-gray-600 dark:text-gray-400">Track and manage your CNC machining orders</p>
+            <h1 className="text-2xl font-bold text-black dark:text-white">
+              My Orders
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Track and manage your CNC machining orders
+            </p>
           </div>
         </div>
 
@@ -87,15 +118,23 @@ export default function OrdersPage() {
               <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Order ID:</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Order ID:
+                    </span>
                     <span className="font-medium">{order.id}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Price:</span>
-                    <span className="font-bold text-lg text-primary">{order.price}</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Price:
+                    </span>
+                    <span className="font-bold text-lg text-primary">
+                      {order.price}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">Ordered:</span>
+                    <span className="text-gray-600 dark:text-gray-400">
+                      Ordered:
+                    </span>
                     <span>{order.createdAt}</span>
                   </div>
 
@@ -132,7 +171,9 @@ export default function OrdersPage() {
                 <CubeIcon className="h-8 w-8 text-primary mr-3" />
                 <div>
                   <p className="text-2xl font-bold">8</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Orders</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Total Orders
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -144,7 +185,9 @@ export default function OrdersPage() {
                 <CheckCircleIcon className="h-8 w-8 text-green-500 mr-3" />
                 <div>
                   <p className="text-2xl font-bold">5</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Completed</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Completed
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -156,7 +199,9 @@ export default function OrdersPage() {
                 <CubeIcon className="h-8 w-8 text-blue-500 mr-3" />
                 <div>
                   <p className="text-2xl font-bold">2</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">In Progress</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    In Progress
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -168,7 +213,9 @@ export default function OrdersPage() {
                 <TruckIcon className="h-8 w-8 text-purple-500 mr-3" />
                 <div>
                   <p className="text-2xl font-bold">1</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Shipped</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Shipped
+                  </p>
                 </div>
               </div>
             </CardContent>

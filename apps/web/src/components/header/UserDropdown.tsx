@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { RequireAnyRole } from "@/components/auth/RequireAnyRole";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 // import { Button } from '../ui/button';
@@ -16,7 +14,7 @@ const UserDropdown = () => {
   const loading = status === "loading";
 
   if (status === "unauthenticated") {
-    router.push("/login");
+    router.push("/signin");
     return null;
   }
 
@@ -60,7 +58,7 @@ const UserDropdown = () => {
             </div>
           </div>
           <div className="py-1">
-            <Link
+            {/* <Link
               href="/profile"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
             >
@@ -93,7 +91,7 @@ const UserDropdown = () => {
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
             >
               Billing
-            </Link>
+            </Link> */}
             {/* <Button onClick={() => notify.success("Click")}>
               Click
             </Button>

@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   TrendingUp,
@@ -8,245 +8,353 @@ import {
   FileText,
   ArrowUpRight,
   ArrowRight,
-  ShoppingCart
-} from 'lucide-react';
-import Link from 'next/link';
+  ShoppingCart,
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import {
+  DashboardAPI,
+  DashboardStats,
+  RecentOrder,
+  RecentQuote,
+} from "../../../lib/api/dashboard";
+import { toast } from "sonner";
 
 export default function CustomerDashboardPage() {
-  const stats = [
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats>({
+    activeQuotes: 0,
+    openOrders: 0,
+    totalSpent: "$0",
+    avgLeadTime: "0 days",
+  });
+  const [recentQuotes, setRecentQuotes] = useState<RecentQuote[]>([]);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsData, quotesData, ordersData] = await Promise.all([
+          DashboardAPI.getStats(),
+          DashboardAPI.getRecentQuotes(),
+          DashboardAPI.getRecentOrders(),
+        ]);
+
+        setStats(statsData);
+        setRecentQuotes(quotesData);
+        setRecentOrders(ordersData);
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+        toast.error("Failed to load dashboard data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
+
+  const statItems = [
     {
-      label: 'Active Quotes',
-      value: '8',
-      change: '+2 this week',
-      trend: 'up',
+      label: "Active Quotes",
+      value: stats.activeQuotes.toString(),
+      change: "Active now",
+      trend: "neutral",
       icon: FileText,
-      color: 'blue',
-      href: '/portal/quotes'
+      color: "blue",
+      href: "/portal/quotes",
     },
     {
-      label: 'Open Orders',
-      value: '3',
-      change: '1 in production',
-      trend: 'neutral',
+      label: "Open Orders",
+      value: stats.openOrders.toString(),
+      change: "In progress",
+      trend: "neutral",
       icon: Package,
-      color: 'green',
-      href: '/portal/orders'
+      color: "green",
+      href: "/portal/orders",
     },
     {
-      label: 'Total Spent',
-      value: '$12,450',
-      change: '+15% this month',
-      trend: 'up',
+      label: "Total Spent",
+      value: stats.totalSpent,
+      change: "Lifetime",
+      trend: "up",
       icon: DollarSign,
-      color: 'purple',
-      href: '/portal/orders'
+      color: "purple",
+      href: "/portal/orders",
     },
     {
-      label: 'Avg Lead Time',
-      value: '5.2 days',
-      change: 'On target',
-      trend: 'neutral',
+      label: "Avg Lead Time",
+      value: stats.avgLeadTime,
+      change: "Target: 5 days",
+      trend: "neutral",
       icon: Clock,
-      color: 'orange',
-      href: '/portal/analytics'
-    }
-  ];
-
-  const recentQuotes = [
-    { id: 'Q-2024-001', description: 'Aluminum bracket assembly', status: 'pending_review', amount: '$245.67', date: 'Oct 25, 2024', parts: 2 },
-    { id: 'Q-2024-002', description: 'Stainless steel manifold', status: 'approved', amount: '$1,234.50', date: 'Oct 22, 2024', parts: 1 },
-    { id: 'Q-2024-003', description: 'Plastic prototype parts', status: 'draft', amount: '$89.30', date: 'Oct 20, 2024', parts: 5 },
-    { id: 'Q-2024-004', description: 'Brass fittings', status: 'approved', amount: '$567.80', date: 'Oct 18, 2024', parts: 10 },
-    { id: 'Q-2024-005', description: 'Titanium components', status: 'pending_review', amount: '$2,890.00', date: 'Oct 15, 2024', parts: 3 },
-  ];
-
-  const recentOrders = [
-    { id: 'ORD-2024-001', description: 'Precision gears (x50)', status: 'in_production', amount: '$2,450.00', dueDate: 'Nov 5, 2024', progress: 65 },
-    { id: 'ORD-2024-002', description: 'Custom brackets (x25)', status: 'shipped', amount: '$675.25', dueDate: 'Oct 28, 2024', progress: 100, tracking: 'UPS-1Z999AA10123456784' },
-    { id: 'ORD-2024-003', description: 'Prototype housing', status: 'completed', amount: '$1,234.00', dueDate: 'Oct 15, 2024', progress: 100 },
-    { id: 'ORD-2024-004', description: 'Machined shafts (x100)', status: 'in_production', amount: '$3,890.50', dueDate: 'Nov 10, 2024', progress: 40 },
-    { id: 'ORD-2024-005', description: 'Anodized plates (x15)', status: 'quality_check', amount: '$890.00', dueDate: 'Oct 30, 2024', progress: 90 },
+      color: "orange",
+      href: "/portal/analytics",
+    },
   ];
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      pending_review: 'bg-yellow-100 text-yellow-700 ring-1 ring-yellow-600/20',
-      approved: 'bg-green-100 text-green-700 ring-1 ring-green-600/20',
-      draft: 'bg-gray-100 text-gray-700 ring-1 ring-gray-600/20',
-      in_production: 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20',
-      quality_check: 'bg-purple-100 text-purple-700 ring-1 ring-purple-600/20',
-      shipped: 'bg-indigo-100 text-indigo-700 ring-1 ring-indigo-600/20',
-      completed: 'bg-green-100 text-green-700 ring-1 ring-green-600/20',
+      pending_review: "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-600/20",
+      approved: "bg-green-100 text-green-700 ring-1 ring-green-600/20",
+      draft: "bg-gray-100 text-gray-700 ring-1 ring-gray-600/20",
+      in_production: "bg-blue-100 text-blue-700 ring-1 ring-blue-600/20",
+      quality_check: "bg-purple-100 text-purple-700 ring-1 ring-purple-600/20",
+      shipped: "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-600/20",
+      completed: "bg-green-100 text-green-700 ring-1 ring-green-600/20",
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return (
+      colors[status] || "bg-gray-100 text-gray-700 ring-1 ring-gray-600/20"
+    );
   };
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, { bg: string; text: string; ring: string }> = {
-      blue: { bg: 'bg-blue-500/10', text: 'text-blue-600', ring: 'ring-blue-500/20' },
-      green: { bg: 'bg-green-500/10', text: 'text-green-600', ring: 'ring-green-500/20' },
-      purple: { bg: 'bg-purple-500/10', text: 'text-purple-600', ring: 'ring-purple-500/20' },
-      orange: { bg: 'bg-orange-500/10', text: 'text-orange-600', ring: 'ring-orange-500/20' },
+      blue: {
+        bg: "bg-blue-500/10",
+        text: "text-blue-600",
+        ring: "ring-blue-500/20",
+      },
+      green: {
+        bg: "bg-green-500/10",
+        text: "text-green-600",
+        ring: "ring-green-500/20",
+      },
+      purple: {
+        bg: "bg-purple-500/10",
+        text: "text-purple-600",
+        ring: "ring-purple-500/20",
+      },
+      orange: {
+        bg: "bg-orange-500/10",
+        text: "text-orange-600",
+        ring: "ring-orange-500/20",
+      },
     };
     return colors[color] || colors.blue;
   };
 
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-100px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Customer Dashboard
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Dashboard
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">
-            Track your quotes, orders, and manufacturing progress
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Overview of your manufacturing activities
           </p>
         </div>
         <Link
           href="/instant-quote"
-          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:shadow-xl hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105 font-semibold cursor-not-allowed opacity-75"
+          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 font-medium"
         >
-          <ShoppingCart size={20} />
-          Get New Quote
+          <ShoppingCart size={18} />
+          New Quote
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statItems.map((stat) => {
           const Icon = stat.icon;
           const colors = getColorClasses(stat.color);
           return (
-            <div
+            <Link
               key={stat.label}
-              className="group relative bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl p-6 border border-gray-200/50 dark:border-gray-800/50 shadow-lg transition-all duration-300 overflow-hidden cursor-not-allowed opacity-90"
+              href={stat.href}
+              className="group relative bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md transition-all duration-200"
             >
-              <div className={`absolute inset-0 ${colors.bg} opacity-0 transition-opacity duration-300`} />
-
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`${colors.bg} ${colors.text} p-3 rounded-xl ring-2 ${colors.ring}`}>
-                    <Icon size={24} />
-                  </div>
-                  <ArrowUpRight className="text-gray-400 transition-colors" size={20} />
+              <div className="flex items-start justify-between mb-4">
+                <div className={`${colors.bg} ${colors.text} p-2.5 rounded-lg`}>
+                  <Icon size={20} />
                 </div>
-                <div className="space-y-1">
-                  <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{stat.label}</p>
-                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                    {stat.value}
-                  </p>
-                  <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
-                    <TrendingUp size={14} />
+                {stat.trend === "up" && (
+                  <span className="text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full flex items-center gap-1">
+                    <TrendingUp size={12} />
                     {stat.change}
-                  </p>
+                  </span>
+                )}
+                {stat.trend === "neutral" && (
+                  <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
+                    {stat.change}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+                  {stat.label}
                 </div>
               </div>
-            </div>
+              <ArrowUpRight
+                className="absolute top-5 right-5 text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1 group-hover:-translate-y-1"
+                size={18}
+              />
+            </Link>
           );
         })}
       </div>
 
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-lg overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-200/50 dark:border-gray-800/50 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <FileText size={24} className="text-blue-600" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Quotes */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col h-full">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <FileText size={18} className="text-gray-400" />
               Recent Quotes
             </h2>
-            <span className="text-blue-600 text-sm font-semibold flex items-center gap-1 cursor-not-allowed opacity-50">
-              View All
-              <ArrowRight size={16} />
-            </span>
+            <Link
+              href="/portal/quotes"
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 hover:gap-1.5 transition-all"
+            >
+              View all
+              <ArrowRight size={14} />
+            </Link>
           </div>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {recentQuotes.map((quote) => (
-              <div
-                key={quote.id}
-                className="group flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 cursor-not-allowed opacity-75"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {quote.id}
-                    </p>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(quote.status)}`}>
-                      {quote.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {quote.description}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    {quote.date}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900 dark:text-white">{quote.amount}</p>
-                </div>
+          <div className="p-4 flex-1">
+            {recentQuotes.length > 0 ? (
+              <div className="space-y-3">
+                {recentQuotes.map((quote) => (
+                  <Link
+                    key={quote.id}
+                    href={`/portal/quotes/${quote.id}`}
+                    className="block p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-100 dark:hover:border-gray-800"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm text-gray-900 dark:text-white">
+                        {quote.rfq_code || quote.id}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${getStatusColor(quote.status)}`}
+                      >
+                        {quote.status?.replace("_", " ")}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                        {quote.description}
+                      </p>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {quote.amount}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-gray-400">
+                      <span>{quote.date}</span>
+                      <span>•</span>
+                      <span>
+                        {quote.parts} {quote.parts === 1 ? "part" : "parts"}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                <FileText size={32} className="mb-2 opacity-20" />
+                <p className="text-sm">No recent quotes found</p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-800/50 shadow-lg overflow-hidden">
-        <div className="px-6 py-5 border-b border-gray-200/50 dark:border-gray-800/50 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/50 dark:to-blue-950/50">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Package size={24} className="text-green-600" />
+        {/* Recent Orders */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col h-full">
+          <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Package size={18} className="text-gray-400" />
               Recent Orders
             </h2>
-            <span className="text-green-600 text-sm font-semibold flex items-center gap-1 cursor-not-allowed opacity-50">
-              View All
-              <ArrowRight size={16} />
-            </span>
+            <Link
+              href="/portal/orders"
+              className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1 hover:gap-1.5 transition-all"
+            >
+              View all
+              <ArrowRight size={14} />
+            </Link>
           </div>
-        </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {recentOrders.map((order) => (
-              <div
-                key={order.id}
-                className="group flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 cursor-not-allowed opacity-75"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <p className="font-semibold text-gray-900 dark:text-white">
-                      {order.id}
-                    </p>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {order.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {order.description}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                    Due: {order.dueDate}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900 dark:text-white">{order.amount}</p>
-                </div>
+          <div className="p-4 flex-1">
+            {recentOrders.length > 0 ? (
+              <div className="space-y-3">
+                {recentOrders.map((order) => (
+                  <Link
+                    key={order.id}
+                    href={`/portal/orders/${order.id}`}
+                    className="block p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-100 dark:hover:border-gray-800"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm text-gray-900 dark:text-white">
+                        {order.order_code || order.id}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${getStatusColor(order.status)}`}
+                      >
+                        {order.status?.replace("_", " ")}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                        {order.description}
+                      </p>
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {order.amount}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[10px]">
+                      <span className="text-gray-400">
+                        Due: {order.dueDate}
+                      </span>
+                      <div className="w-16 h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-green-500 rounded-full"
+                          style={{ width: `${order.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="flex flex-col items-center justify-center h-48 text-gray-400">
+                <Package size={32} className="mb-2 opacity-20" />
+                <p className="text-sm">No recent orders found</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 shadow-2xl shadow-blue-500/30">
-        <div className="flex items-center justify-between">
-          <div className="text-white">
-            <h2 className="text-2xl font-bold mb-2">Need Custom Parts?</h2>
-            <p className="text-blue-100">Get instant quotes for CNC machining and manufacturing</p>
+      <div className="rounded-xl p-8 bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 group-hover:opacity-20 transition-opacity"></div>
+
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-2">
+              Ready for your next project?
+            </h2>
+            <p className="text-gray-300 max-w-lg">
+              Get instant pricing and lead times for CNC machining, Injection
+              Molding, Vacuum Casting, and sheet metal fabrication.
+            </p>
           </div>
-          <button
-            className="px-8 py-4 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 font-bold text-lg shadow-xl cursor-not-allowed opacity-75"
-            disabled
+          <Link
+            href="/instant-quote"
+            className="px-6 py-3 bg-white text-gray-900 rounded-lg hover:bg-gray-50 transition-colors font-semibold shadow-lg whitespace-nowrap"
           >
             Start New Quote
-          </button>
+          </Link>
         </div>
       </div>
     </div>
