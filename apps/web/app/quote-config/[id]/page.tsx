@@ -21,7 +21,9 @@ import {
   Save,
   Plus,
   Truck,
+  X,
 } from "lucide-react";
+import { FloatingActions } from "@/components/ui/floating-actions";
 import { analyzeCADFile } from "../../../lib/cad-analysis";
 import {
   calculatePricing,
@@ -504,6 +506,7 @@ export default function QuoteConfigPage() {
                   final_price: undefined,
                   leadTime: undefined,
                   is_archived: p.is_archived,
+                  snapshot_2d_url: p.snapshot_2d_url,
                   files2d: (p.files2d || []).map((f: any) => ({
                     file: {
                       name: f.file_name || "Drawing",
@@ -774,6 +777,17 @@ export default function QuoteConfigPage() {
     }
   };
 
+  const checkFor2DDiagrams = () => {
+    parts.forEach((part) => {
+      if (!part.files2d?.length) {
+        notify.info(`Part ${part.id} is missing a 2D diagram`);
+        return false;
+      }
+    });
+
+    return true;
+  };
+
   const handleCheckout = async () => {
     try {
       setSaving(true);
@@ -786,6 +800,10 @@ export default function QuoteConfigPage() {
         notify.error(
           "Please revise the quote to a minimum value of $150 to proceed.",
         );
+        return;
+      }
+
+      if (!checkFor2DDiagrams()) {
         return;
       }
 
@@ -1168,12 +1186,12 @@ export default function QuoteConfigPage() {
         </div>
 
         {/* RIGHT SIDEBAR (FIXED) */}
-        <div className="w-full xl:w-[400px] lg:w-full xl:py-10 xl:flex-shrink-0 z-30 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-0">
-          <div className="xl:sticky xl:top-[85px] custom-scrollbar mb-8 xl:mb-0">
-            <div className="backdrop-blur-xl border bg-white border-white/60 shadow-xl rounded-xl md:rounded-2xl p-4 md:p-6 flex flex-col gap-4 md:gap-6">
-              <div className="flex items-center gap-2 pb-3 md:pb-4 border-b border-slate-100">
-                <div className="p-1.5 md:p-2 bg-green-100 text-green-700 rounded-lg">
-                  <ScrollText className="w-4 h-4 md:w-5 md:h-5" />
+        <div className="w-full lg:w-[300px] xl:w-[400px] lg:py-10 lg:flex-shrink-0 z-30">
+          <div className="lg:sticky lg:top-[85px] custom-scrollbar">
+            <div className="backdrop-blur-xl border bg-white border-white/60 shadow-xl rounded-2xl p-6 flex flex-col gap-6">
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-100">
+                <div className="p-2 bg-green-100 text-green-700 rounded-lg">
+                  <ScrollText className="w-5 h-5" />
                 </div>
                 <h2 className="text-base md:text-lg font-bold text-slate-800">
                   Order Summary
@@ -1314,80 +1332,48 @@ export default function QuoteConfigPage() {
         onApplySuggestion={handleApplySuggestion}
       />
 
-      {/* Floating Action Bar for Selection Mode */}
-      {selectedParts.size > 0 && (
-        <div className="fixed bottom-4 md:bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 duration-300 max-w-[95vw] md:max-w-none">
-          <div className="backdrop-blur-xl bg-white border border-slate-200 shadow-2xl rounded-xl md:rounded-2xl px-3 md:px-6 py-3 md:py-4 flex items-center gap-2 md:gap-4 flex-wrap md:flex-nowrap justify-center">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <span className="text-sm font-bold text-blue-700">
-                  {selectedParts.size}
-                </span>
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-bold text-slate-900">
-                  {selectedParts.size} part{selectedParts.size !== 1 ? "s" : ""}{" "}
-                  selected
-                </p>
-                <p className="text-xs text-slate-500">{parts.length} total</p>
-              </div>
-            </div>
-
-            <div className="h-10 w-px bg-slate-200"></div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={toggleSelectAll}
-              className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs md:text-sm"
-            >
-              {selectedParts.size === parts.length ? (
-                <>
-                  <Square className="w-4 h-4 mr-2" />
-                  Deselect All
-                </>
+      <FloatingActions
+        count={selectedParts.size}
+        totalCount={parts.length}
+        onClear={exitSelectionMode}
+        itemLabel="part"
+        actions={[
+          {
+            label:
+              selectedParts.size === parts.length
+                ? "Deselect All"
+                : "Select All",
+            icon:
+              selectedParts.size === parts.length ? (
+                <Square className="w-4 h-4" />
               ) : (
-                <>
-                  <CheckSquare className="w-4 h-4 mr-2" />
-                  Select All
-                </>
-              )}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleBulkArchive}
-              disabled={selectedParts.size === 0}
-              className="border-slate-300 text-slate-700 hover:bg-slate-50 text-xs md:text-sm"
-            >
-              <Archive className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
-              <span className="hidden md:inline">Archive</span>
-            </Button>
-
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleBulkDelete}
-              disabled={selectedParts.size === 0}
-              className="bg-red-600 hover:bg-red-700 text-white text-xs md:text-sm"
-            >
-              <Trash2 className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
-              <span className="hidden sm:inline">Delete</span>
-              <span className="hidden md:inline"> Selected</span>
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={exitSelectionMode}
-              className="text-slate-600 hover:text-slate-900 text-xs md:text-sm"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      )}
+                <CheckSquare className="w-4 h-4" />
+              ),
+            variant: "outline",
+            onClick: toggleSelectAll,
+          },
+          {
+            label: "Archive",
+            icon: <Archive className="w-4 h-4" />,
+            variant: "outline",
+            onClick: handleBulkArchive,
+            disabled: selectedParts.size === 0,
+          },
+          {
+            label: "Delete Selected",
+            icon: <Trash2 className="w-4 h-4" />,
+            variant: "destructive",
+            onClick: handleBulkDelete,
+            disabled: selectedParts.size === 0,
+          },
+          {
+            label: "Cancel",
+            icon: <X className="w-4 h-4" />,
+            variant: "ghost",
+            onClick: exitSelectionMode,
+          },
+        ]}
+      />
     </div>
   );
 }

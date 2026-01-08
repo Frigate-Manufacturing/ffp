@@ -16,11 +16,11 @@ SET NULL,
     };
 CREATE INDEX idx_users_email ON users(email);
 -- --
--- Organizations
+-- Organizationsstock_material_type
 -- --
 CREATE TABLE IF NOT EXISTS organizations { id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-name VARCHAR(255) UNIQUE NOT NULL,
-diplay_name VARCHAR(255),
+name VARCHAR(255) NOT NULL,
+display_name VARCHAR(255),
 address TEXT,
 organization_type TEXT NOT NULL DEFAULT 'customer',
 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

@@ -1692,6 +1692,9 @@ export default function CheckoutPage() {
                             } catch (err) {
                               console.error("Capture error:", err);
                               notify.error("Payment capture failed");
+                              await apiClient.post(
+                                `/orders/${orderId}/failure`,
+                              );
                             } finally {
                               setIsProcessing(false);
                             }
